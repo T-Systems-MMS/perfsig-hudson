@@ -1,0 +1,109 @@
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.eclipse.hudson.plugins</groupId>
+        <artifactId>hudson-plugin-parent</artifactId>
+        <version>3.2.2</version>
+        <!-- which version of Hudson is this plugin built against? Users must have at least this Hudson version to use this plugin. -->
+    </parent>
+
+    <artifactId>performance-signature-dynatrace</artifactId>
+    <version>1.5.1</version>
+    <packaging>hpi</packaging>
+
+    <name>Performance Signature Plugin with Dynatrace</name>
+    <url>http://www.test-and-integration.de/</url>
+    <scm>
+        <connection>scm:git:https://github.com/T-Systems-MMS/perfsig-hudson.git</connection>
+        <developerConnection>scm:git:https://rpionke@github.com/T-Systems-MMS/perfsig-hudson.git</developerConnection>
+        <url>https://github.com/T-Systems-MMS/perfsig-hudson</url>
+		<tag>HEAD</tag>
+    </scm>
+
+    <developers>
+        <developer>
+            <id>rpionke</id>
+            <name>Raphael Pionke</name>
+            <email>raphael.pionke@t-systems.com</email>
+        </developer>
+    </developers>
+
+    <licenses>
+        <license>
+            <name>Apache License 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+	
+	<pluginRepositories>
+		<pluginRepository>
+            <id>repo.maven.apache.org</id>
+            <url>https://repo.maven.apache.org/maven3/</url>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.hudsonci.plugins</groupId>
+            <artifactId>jfreechart-plugin</artifactId>
+            <version>1.5</version>
+        </dependency>
+    </dependencies>
+
+    <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <maven-compiler-plugin.version>3.2</maven-compiler-plugin.version>
+        <compileSource>1.6</compileSource>
+        <compileTarget>1.6</compileTarget>
+        <!--<maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>-->
+    </properties>
+	
+	<build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>${maven-compiler-plugin.version}</version>
+                    <configuration>
+                        <source>${compileSource}</source>
+                        <target>${compileTarget}</target>
+                        <showDeprecation>true</showDeprecation>
+                        <showWarnings>true</showWarnings>
+						<compilerArgument>-Xlint:unchecked</compilerArgument>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+			<plugin>
+                <groupId>org.eclipse.hudson.tools</groupId>
+                <artifactId>maven-hpi-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <compatibleSinceVersion>1.5.1</compatibleSinceVersion>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${maven-compiler-plugin.version}</version>
+                <configuration>
+                    <source>${compileSource}</source>
+                    <target>${compileTarget}</target>
+                    <showDeprecation>true</showDeprecation>
+                    <showWarnings>true</showWarnings>
+                </configuration>
+            </plugin>
+        </plugins>
+        <!--<finalName>
+            dt_perfsig_hudson_v${project.version}_${maven.build.timestamp}
+        </finalName>-->
+    </build>
+</project>
