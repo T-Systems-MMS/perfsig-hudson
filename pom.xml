@@ -4,21 +4,20 @@
     <parent>
         <groupId>org.eclipse.hudson.plugins</groupId>
         <artifactId>hudson-plugin-parent</artifactId>
-        <version>3.2.2</version>
-        <!-- which version of Hudson is this plugin built against? Users must have at least this Hudson version to use this plugin. -->
+        <version>3.2.0</version>
     </parent>
 
-    <artifactId>performance-signature-dynatrace</artifactId>
+    <artifactId>performance-signature</artifactId>
     <version>1.5.1</version>
     <packaging>hpi</packaging>
 
     <name>Performance Signature Plugin with Dynatrace</name>
-    <url>http://www.test-and-integration.de/</url>
+    <url>https://github.com/hudson3-plugins/performance-signature-plugin/wiki</url>
     <scm>
-        <connection>scm:git:https://github.com/T-Systems-MMS/perfsig-hudson.git</connection>
-        <developerConnection>scm:git:https://rpionke@github.com/T-Systems-MMS/perfsig-hudson.git</developerConnection>
-        <url>https://github.com/T-Systems-MMS/perfsig-hudson</url>
-		<tag>HEAD</tag>
+        <connection>scm:git:https://github.com/hudson3-plugins/performance-signature-plugin.git</connection>
+        <developerConnection>scm:git:https://rpionke@github.com/hudson3-plugins/performance-signature-plugin.git</developerConnection>
+        <url>https://github.com/hudson3-plugins/performance-signature-plugin</url>
+	<tag>HEAD</tag>
     </scm>
 
     <developers>
@@ -31,7 +30,7 @@
 
     <licenses>
         <license>
-            <name>Apache License 2.0</name>
+            <name>Apache License, Version 2.0</name>
             <url>http://www.apache.org/licenses/LICENSE-2.0</url>
             <distribution>repo</distribution>
         </license>
@@ -63,7 +62,6 @@
         <maven-compiler-plugin.version>3.2</maven-compiler-plugin.version>
         <compileSource>1.6</compileSource>
         <compileTarget>1.6</compileTarget>
-        <!--<maven.build.timestamp.format>yyyyMMdd</maven.build.timestamp.format>-->
     </properties>
 	
 	<build>
@@ -102,8 +100,5 @@
                 </configuration>
             </plugin>
         </plugins>
-        <!--<finalName>
-            dt_perfsig_hudson_v${project.version}_${maven.build.timestamp}
-        </finalName>-->
     </build>
 </project>
