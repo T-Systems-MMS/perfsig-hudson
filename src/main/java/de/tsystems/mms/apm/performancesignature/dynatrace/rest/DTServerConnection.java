@@ -29,10 +29,10 @@
 package de.tsystems.mms.apm.performancesignature.dynatrace.rest;
 
 import de.tsystems.mms.apm.performancesignature.dynatrace.model.*;
-import de.tsystems.mms.apm.performancesignature.hudson.DTPerfSigRecorder;
+import de.tsystems.mms.apm.performancesignature.DTPerfSigRecorder;
 import de.tsystems.mms.apm.performancesignature.dynatrace.model.DashboardReport;
-import de.tsystems.mms.apm.performancesignature.hudson.model.ProxyBlock;
-import de.tsystems.mms.apm.performancesignature.hudson.util.DTPerfSigUtils;
+import de.tsystems.mms.apm.performancesignature.model.ProxyBlock;
+import de.tsystems.mms.apm.performancesignature.util.DTPerfSigUtils;
 import hudson.ProxyConfiguration;
 import hudson.util.IOUtils;
 import org.apache.commons.lang3.StringUtils;

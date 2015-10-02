@@ -7,9 +7,9 @@
         <version>3.2.0</version>
     </parent>
 
-    <groupid>de.tsystems.mms.apm</groupid>
+    <groupId>de.tsystems.mms.apm</groupId>
     <artifactId>performance-signature</artifactId>
-    <version>1.5.1</version>
+    <version>1.5.2-SNAPSHOT</version>
     <packaging>hpi</packaging>
 
     <name>Performance Signature Plugin with Dynatrace</name>
@@ -63,6 +63,7 @@
         <maven-compiler-plugin.version>3.2</maven-compiler-plugin.version>
         <compileSource>1.6</compileSource>
         <compileTarget>1.6</compileTarget>
+        <hudsonTags>report,builder</hudsonTags>
     </properties>
 	
 	<build>
