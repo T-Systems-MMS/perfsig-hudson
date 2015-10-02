@@ -8,7 +8,7 @@
 
     <groupId>de.tsystems.mms.apm</groupId>
     <artifactId>performance-signature</artifactId>
-    <version>1.5.2</version>
+    <version>1.5.3-SNAPSHOT</version>
     <packaging>hpi</packaging>
 
     <name>Performance Signature Plugin with Dynatrace</name>
