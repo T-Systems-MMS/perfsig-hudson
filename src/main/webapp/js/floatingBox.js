@@ -22,8 +22,10 @@ define(['./common'], function () {
 
                 var json = $.getJSON("performance-signature/getDashboardConfiguration", {testCase: testCase}, function (data) {
                     $.each(data, function (index) {
-                        $(".carousel-inner", carousel).append('<div class="item">' +
-                            data[index].html.replace("###", testCase).replace("./", "performance-signature/") + '</div>\n');
+                        if (data[index].show) {
+                            $(".carousel-inner", carousel).append('<div class="item">' +
+                                data[index].html.replace("###", testCase).replace("./", "performance-signature/") + '</div>\n');
+                        }
                     });
                     $(".carousel-inner div:first-child", carousel).addClass("active");
                 });
