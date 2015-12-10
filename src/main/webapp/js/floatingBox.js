@@ -17,19 +17,35 @@
 define(['./common'], function () {
     require(['jquery', 'bootstrap'], function ($) {
         $(document).ready(function () {
+                //get & set crumb to avoid 403
+                $.getJSON(rootURL + "/crumbIssuer/api/json", function (crumb) {
+                    $.ajaxSetup({
+                        beforeSend: function (xhr) {
+                            xhr.setRequestHeader(crumb.crumbRequestField, crumb.crumb);
+                        }
+                    });
+                });
+
             $(".carousel").each(function (carouselIndex, carousel) {
                 var testCase = $(carousel).attr('id').substring(9);
 
-                var json = $.getJSON("performance-signature/getDashboardConfiguration", {testCase: testCase}, function (data) {
-                    $.each(data, function (index) {
-                        if (data[index].show) {
-                            $(".carousel-inner", carousel).append('<div class="item">' +
-                                data[index].html.replace("###", testCase).replace("./", "performance-signature/") + '</div>\n');
+                $.getJSON("performance-signature/getDashboardConfiguration", {dashboard: testCase}, function (json) {
+                    $.each(json, function (index) {
+                        if (json[index].show && json[index].dashboard == testCase) {
+                            if (json[index].id === 'unittest_overview') {
+                                $(".carousel-inner", carousel).append('<div class="item">' +
+                                    '<img class="img-thumbnail" height="300" width="410"' +
+                                    'src="performance-signature/testRunGraph?width=410&amp;height=300"></div>\n');
+                            } else {
+                                $(".carousel-inner", carousel).append('<div class="item">' +
+                                    '<img class="img-thumbnail" height="300" width="410"' +
+                                    'src="performance-signature/summarizerGraph?width=410&amp;height=300&amp;id=' + json[index].id + '"></div>\n');
+                            }
                         }
                     });
                     $(".carousel-inner div:first-child", carousel).addClass("active");
+                    $(".carousel").carousel(0);
                 });
-                $(".carousel").carousel(0);
             });
 
             var hash = window.location.hash;

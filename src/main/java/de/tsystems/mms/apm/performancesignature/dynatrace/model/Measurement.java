@@ -17,8 +17,8 @@
 package de.tsystems.mms.apm.performancesignature.dynatrace.model;
 
 import de.tsystems.mms.apm.performancesignature.dynatrace.util.AttributeUtils;
-import de.tsystems.mms.apm.performancesignature.util.DTPerfSigUtils;
-import org.apache.commons.lang3.StringUtils;
+import de.tsystems.mms.apm.performancesignature.util.PerfSigUtils;
+import org.apache.commons.lang.StringUtils;
 import org.xml.sax.Attributes;
 
 import java.math.BigDecimal;
@@ -44,59 +44,35 @@ public class Measurement {
         return sum;
     }
 
-    public void setSum(final double sum) {
-        this.sum = sum;
-    }
-
     public int getCount() {
         return count;
-    }
-
-    public void setCount(final int count) {
-        this.count = count;
     }
 
     public double getAvg() {
         return this.avg;
     }
 
-    public void setAvg(final double avg) {
-        this.avg = avg;
-    }
 
-    @SuppressWarnings("unused")
     public BigDecimal getStrAvg() {
-        return DTPerfSigUtils.round(this.avg, 2);
+        return PerfSigUtils.round(this.avg, 2);
     }
 
     public double getMin() {
         return this.min;
     }
 
-    public void setMin(final double min) {
-        this.min = min;
-    }
-
     public long getTimestamp() {
         return this.timestamp;
-    }
-
-    public void setTimestamp(final long timestamp) {
-        this.timestamp = timestamp;
     }
 
     public double getMax() {
         return this.max;
     }
 
-    public void setMax(final double max) {
-        this.max = max;
-    }
-
-    /*
-    used by DTPerfSigBuildActionResultsDisplay
-    get the avg value of a metric
-    */
+    /**
+     * used by PerfSigBuildActionResultsDisplay
+     * get the avg value of a metric
+     */
     public double getMetricValue(final String aggregation) {
         if (aggregation.equalsIgnoreCase("Count"))
             return this.getCount();

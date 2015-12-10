@@ -16,76 +16,27 @@
 
 package de.tsystems.mms.apm.performancesignature.model;
 
-import de.tsystems.mms.apm.performancesignature.dynatrace.rest.DTServerConnection;
-import de.tsystems.mms.apm.performancesignature.util.DTPerfSigUtils;
 import hudson.Extension;
-import hudson.RelativePath;
-import hudson.util.ListBoxModel;
-import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.QueryParameter;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Created by rapi on 07.05.2014.
  */
 public class GeneralTestCase extends ConfigurationTestCase {
-    private final String xmlDashboard;
-    private final List<Dashboard> singleDashboards;
-    private final List<Dashboard> comparisonDashboards;
 
     @DataBoundConstructor
     public GeneralTestCase(final String name, final List<Dashboard> singleDashboards,
                            final List<Dashboard> comparisonDashboards, final String xmlDashboard) {
-        super(name);
-        this.singleDashboards = singleDashboards;
-        this.comparisonDashboards = comparisonDashboards;
-        this.xmlDashboard = xmlDashboard;
-    }
-
-    public String getXmlDashboard() {
-        return xmlDashboard;
-    }
-
-    public List<Dashboard> getSingleDashboards() {
-        if (singleDashboards == null)
-            return new ArrayList<Dashboard>();
-        return singleDashboards;
-    }
-
-    public List<Dashboard> getComparisonDashboards() {
-        if (comparisonDashboards == null)
-            return new ArrayList<Dashboard>();
-        return comparisonDashboards;
-    }
-
-    @Override
-    public boolean validate() {
-        return super.validate() && StringUtils.isNotBlank(xmlDashboard);
+        super(name, singleDashboards, comparisonDashboards, xmlDashboard);
     }
 
     @Extension
     public static final class DescriptorImpl extends ConfigurationTestCaseDescriptor {
         @Override
         public String getDisplayName() {
-            return "General TestCase";
-        }
-
-        public ListBoxModel doFillXmlDashboardItems(@RelativePath("..") @QueryParameter("protocol") final String protocol, @RelativePath("..") @QueryParameter("host") final String host,
-                                                    @RelativePath("..") @QueryParameter("port") final int port, @RelativePath("..") @QueryParameter("username") final String username,
-                                                    @RelativePath("..") @QueryParameter("password") final String password, @RelativePath("..") @QueryParameter("useJenkinsProxy") final boolean useJenkinsProxy,
-                                                    @RelativePath("..") @QueryParameter("verifyCertificate") final boolean verifyCertificate,
-                                                    @RelativePath("..") @QueryParameter("proxyServer") final String proxyServer, @RelativePath("..") @QueryParameter("proxyPort") final int proxyPort,
-                                                    @RelativePath("..") @QueryParameter("proxyUser") final String proxyUser, @RelativePath("..") @QueryParameter("proxyPassword") final String proxyPassword) {
-
-            ProxyBlock proxy = null;
-            if (StringUtils.isNotBlank(proxyServer) && proxyPort > 0 && StringUtils.isNotBlank(username) && StringUtils.isNotBlank(password)) {
-                proxy = new ProxyBlock(proxyServer, proxyPort, proxyUser, proxyPassword);
-            }
-            final DTServerConnection newConnection = new DTServerConnection(protocol, host, port, username, password, verifyCertificate, useJenkinsProxy, proxy);
-            return DTPerfSigUtils.listToListBoxModel(newConnection.getDashboards());
+            return "other TestCases";
         }
     }
 }

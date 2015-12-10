@@ -17,7 +17,7 @@
 package de.tsystems.mms.apm.performancesignature.dynatrace.model;
 
 import de.tsystems.mms.apm.performancesignature.dynatrace.util.AttributeUtils;
-import de.tsystems.mms.apm.performancesignature.util.DTPerfSigUtils;
+import de.tsystems.mms.apm.performancesignature.util.PerfSigUtils;
 import org.xml.sax.Attributes;
 
 import java.util.ArrayList;
@@ -29,6 +29,7 @@ import java.util.List;
 public class ChartDashlet {
     private final String name;
     private List<Measure> measures;
+    private String description;
 
     public ChartDashlet(final String name) {
         this.name = name;
@@ -36,14 +37,19 @@ public class ChartDashlet {
 
     public ChartDashlet(final Attributes attr) {
         this.name = AttributeUtils.getStringAttribute("name", attr);
+        this.description = AttributeUtils.getStringAttribute("description", attr);
     }
 
     public static String encode(final String string) {
-        return DTPerfSigUtils.encodeString(string);
+        return PerfSigUtils.encodeString(string);
     }
 
     public String getName() {
         return name;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     @Override
