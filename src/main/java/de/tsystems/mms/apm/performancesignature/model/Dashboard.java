@@ -16,15 +16,14 @@
 
 package de.tsystems.mms.apm.performancesignature.model;
 
+import de.tsystems.mms.apm.performancesignature.PerfSigRecorder;
 import de.tsystems.mms.apm.performancesignature.dynatrace.rest.DTServerConnection;
-import de.tsystems.mms.apm.performancesignature.DTPerfSigRecorder;
-import de.tsystems.mms.apm.performancesignature.util.DTPerfSigUtils;
+import de.tsystems.mms.apm.performancesignature.util.PerfSigUtils;
 import hudson.Extension;
 import hudson.RelativePath;
 import hudson.model.AbstractDescribableImpl;
 import hudson.model.Descriptor;
 import hudson.util.ListBoxModel;
-import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
@@ -57,8 +56,8 @@ public class Dashboard extends AbstractDescribableImpl<Dashboard> implements Ser
             load();
         }
 
-        public DTPerfSigRecorder.DescriptorImpl getPublisherDescriptor() {
-            return DTPerfSigUtils.getInstanceOrDie().getDescriptorByType(DTPerfSigRecorder.DescriptorImpl.class);
+        public PerfSigRecorder.DescriptorImpl getPublisherDescriptor() {
+            return PerfSigUtils.getInstanceOrDie().getDescriptorByType(PerfSigRecorder.DescriptorImpl.class);
         }
 
         @Override
@@ -66,19 +65,20 @@ public class Dashboard extends AbstractDescribableImpl<Dashboard> implements Ser
             return "Single/Comparison Report Dashboards";
         }
 
-        public ListBoxModel doFillDashboardItems(@RelativePath("../..") @QueryParameter("protocol") final String protocol, @RelativePath("../..") @QueryParameter("host") final String host,
-                                                 @RelativePath("../..") @QueryParameter("port") final int port, @RelativePath("../..") @QueryParameter("username") final String username,
-                                                 @RelativePath("../..") @QueryParameter("password") final String password,
-                                                 @RelativePath("../..") @QueryParameter("verifyCertificate") final boolean verifyCertificate, @RelativePath("../..") @QueryParameter("useJenkinsProxy") final boolean useJenkinsProxy,
-                                                 @RelativePath("../..") @QueryParameter("proxyServer") final String proxyServer, @RelativePath("../..") @QueryParameter("proxyPort") final int proxyPort,
-                                                 @RelativePath("../..") @QueryParameter("proxyUser") final String proxyUser, @RelativePath("../..") @QueryParameter("proxyPassword") final String proxyPassword) {
+        public ListBoxModel doFillDashboardItems(@RelativePath("../..") @QueryParameter final String protocol, @RelativePath("../..") @QueryParameter final String host,
+                                                 @RelativePath("../..") @QueryParameter final int port, @RelativePath("../..") @QueryParameter final String username,
+                                                 @RelativePath("../..") @QueryParameter final String password,
+                                                 @RelativePath("../..") @QueryParameter final boolean verifyCertificate, @RelativePath("../..") @QueryParameter final boolean proxy,
+                                                 @RelativePath("../..") @QueryParameter final int proxySource,
+                                                 @RelativePath("../..") @QueryParameter final String proxyServer, @RelativePath("../..") @QueryParameter final int proxyPort,
+                                                 @RelativePath("../..") @QueryParameter final String proxyUser, @RelativePath("../..") @QueryParameter final String proxyPassword) {
 
-            ProxyBlock proxy = null;
-            if (StringUtils.isNotBlank(proxyServer) && proxyPort > 0 && StringUtils.isNotBlank(username) && StringUtils.isNotBlank(password)) {
-                proxy = new ProxyBlock(proxyServer, proxyPort, proxyUser, proxyPassword);
+            CustomProxy customProxyServer = null;
+            if (proxy) {
+                customProxyServer = new CustomProxy(proxyServer, proxyPort, proxyUser, proxyPassword, proxySource == 0);
             }
-            final DTServerConnection newConnection = new DTServerConnection(protocol, host, port, username, password, verifyCertificate, useJenkinsProxy, proxy);
-            return DTPerfSigUtils.listToListBoxModel(newConnection.getDashboards());
+            final DTServerConnection connection = new DTServerConnection(protocol, host, port, username, password, verifyCertificate, customProxyServer);
+            return PerfSigUtils.listToListBoxModel(connection.getDashboards());
         }
     }
 }

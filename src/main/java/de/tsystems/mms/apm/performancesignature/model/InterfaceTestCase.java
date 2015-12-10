@@ -16,14 +16,8 @@
 
 package de.tsystems.mms.apm.performancesignature.model;
 
-import de.tsystems.mms.apm.performancesignature.dynatrace.rest.DTServerConnection;
-import de.tsystems.mms.apm.performancesignature.util.DTPerfSigUtils;
 import hudson.Extension;
-import hudson.RelativePath;
-import hudson.util.ListBoxModel;
-import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.QueryParameter;
 
 import java.util.List;
 
@@ -42,21 +36,6 @@ public class InterfaceTestCase extends GeneralTestCase {
         @Override
         public String getDisplayName() {
             return "InterfaceTestCase";
-        }
-
-        public ListBoxModel doFillXmlDashboardItems(@RelativePath("..") @QueryParameter("protocol") final String protocol, @RelativePath("..") @QueryParameter("host") final String host,
-                                                    @RelativePath("..") @QueryParameter("port") final int port, @RelativePath("..") @QueryParameter("username") final String username,
-                                                    @RelativePath("..") @QueryParameter("password") final String password, @RelativePath("..") @QueryParameter("useJenkinsProxy") final boolean useJenkinsProxy,
-                                                    @RelativePath("..") @QueryParameter("verifyCertificate") final boolean verifyCertificate,
-                                                    @RelativePath("..") @QueryParameter("proxyServer") final String proxyServer, @RelativePath("..") @QueryParameter("proxyPort") final int proxyPort,
-                                                    @RelativePath("..") @QueryParameter("proxyUser") final String proxyUser, @RelativePath("..") @QueryParameter("proxyPassword") final String proxyPassword) {
-
-            ProxyBlock proxy = null;
-            if (StringUtils.isNotBlank(proxyServer) && proxyPort > 0 && StringUtils.isNotBlank(username) && StringUtils.isNotBlank(password)) {
-                proxy = new ProxyBlock(proxyServer, proxyPort, proxyUser, proxyPassword);
-            }
-            final DTServerConnection newConnection = new DTServerConnection(protocol, host, port, username, password, verifyCertificate, useJenkinsProxy, proxy);
-            return DTPerfSigUtils.listToListBoxModel(newConnection.getDashboards());
         }
     }
 
