@@ -58,7 +58,7 @@
         <checkstyle.version>2.15</checkstyle.version>
         <compileSource>1.6</compileSource>
         <compileTarget>1.6</compileTarget>
-        <gpg.keyname>B18B998D</gpg.keyname>
+        <gpg.keyname>97F909FE</gpg.keyname>
         <hudsonTags>report,builder</hudsonTags>
     </properties>
 	
