@@ -17,15 +17,6 @@
 define(['./common'], function () {
     require(['jquery', 'bootstrap'], function ($) {
         $(document).ready(function () {
-                //get & set crumb to avoid 403
-                $.getJSON(rootURL + "/crumbIssuer/api/json", function (crumb) {
-                    $.ajaxSetup({
-                        beforeSend: function (xhr) {
-                            xhr.setRequestHeader(crumb.crumbRequestField, crumb.crumb);
-                        }
-                    });
-                });
-
             $(".carousel").each(function (carouselIndex, carousel) {
                 var testCase = $(carousel).attr('id').substring(9);
 
