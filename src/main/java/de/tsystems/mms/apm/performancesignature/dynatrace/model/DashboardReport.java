@@ -16,24 +16,13 @@
 
 package de.tsystems.mms.apm.performancesignature.dynatrace.model;
 
-import de.tsystems.mms.apm.performancesignature.PerfSigBuildAction;
-import de.tsystems.mms.apm.performancesignature.model.ConfigurationTestCase;
-import de.tsystems.mms.apm.performancesignature.model.UnitTestCase;
-import hudson.model.AbstractBuild;
-
-import java.util.Date;
 import java.util.List;
 
-/**
- * Created by rapi on 19.05.2014.
- */
 public class DashboardReport {
-    private String name;
+    private final String name;
     private List<ChartDashlet> chartDashlets;
     private List<IncidentChart> incidents;
-    private PerfSigBuildAction buildAction;
-    private DashboardReport lastDashboardReport;
-    private ConfigurationTestCase configurationTestCase;
+    private boolean unitTest;
 
     public DashboardReport(final String testCaseName) {
         this.name = testCaseName;
@@ -59,55 +48,12 @@ public class DashboardReport {
         return name;
     }
 
-    public void setName(final String name) {
-        this.name = name;
-    }
-
-    public PerfSigBuildAction getBuildAction() {
-        return this.buildAction;
-    }
-
-    public void setBuildAction(final PerfSigBuildAction buildAction) {
-        this.buildAction = buildAction;
-    }
-
-    public ConfigurationTestCase getConfigurationTestCase() {
-        return configurationTestCase;
-    }
-
-    public void setConfigurationTestCase(final ConfigurationTestCase configurationTestCase) {
-        this.configurationTestCase = configurationTestCase;
-    }
-
-    public DashboardReport getLastDashboardReport() {
-        return lastDashboardReport;
-    }
-
-    public void setLastDashboardReport(final DashboardReport lastDashboardReport) {
-        this.lastDashboardReport = lastDashboardReport;
-    }
-
-    public AbstractBuild<?, ?> getBuild() {
-        return this.buildAction.getBuild();
-    }
-
-    public Date getBuildTime() {
-        return getBuild().getTime();
-    }
-
     public boolean isUnitTest() {
-        return this.configurationTestCase instanceof UnitTestCase;
+        return unitTest;
     }
 
-    @Override
-    public String toString() {
-        return "DashboardReport{" +
-                "name='" + name + '\'' +
-                ", chartDashlets=" + chartDashlets +
-                ", buildAction=" + buildAction +
-                ", lastDashboardReport=" + lastDashboardReport +
-                ", configurationTestCase=" + configurationTestCase +
-                '}';
+    public void setUnitTest(final boolean unitTest) {
+        this.unitTest = unitTest;
     }
 
     public Measure getMeasure(final String chartDashlet, final String measure) {

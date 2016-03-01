@@ -16,18 +16,21 @@
 
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:f="/lib/form">
+    <f:entry title="${%Dynatrace profile}" field="dynatraceProfile" description="${%description(rootURL)}">
+        <f:select/>
+    </f:entry>
     <f:entry title="${%Agent}" field="agent" description="${%memory dump on agent}">
-        <f:textbox/>
+        <f:select/>
     </f:entry>
     <f:entry title="${%Host}" field="host">
-        <f:textbox/>
+        <f:select/>
     </f:entry>
 
     <f:advanced>
         <f:entry title="${%Type}" field="type" description="${%simple specifies a Simple Total Memory Dump,
 extended specifies an Extended Total Memory Dump,
 selective specifies a Selective Memory Dump}">
-            <f:select/>
+            <f:select default="{descriptor.defaultType}"/>
         </f:entry>
         <f:entry title="${%lock Session}" field="lockSession"
                  description="${%prevent the deletion of the memory dump}">

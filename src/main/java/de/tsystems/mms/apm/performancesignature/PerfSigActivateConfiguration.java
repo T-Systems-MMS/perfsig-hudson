@@ -17,9 +17,12 @@
 package de.tsystems.mms.apm.performancesignature;
 
 import de.tsystems.mms.apm.performancesignature.dynatrace.model.Agent;
+import de.tsystems.mms.apm.performancesignature.dynatrace.rest.CommandExecutionException;
 import de.tsystems.mms.apm.performancesignature.dynatrace.rest.DTServerConnection;
-import de.tsystems.mms.apm.performancesignature.dynatrace.rest.RESTErrorException;
+import de.tsystems.mms.apm.performancesignature.model.CredProfilePair;
+import de.tsystems.mms.apm.performancesignature.model.DynatraceServerConfiguration;
 import de.tsystems.mms.apm.performancesignature.util.PerfSigUtils;
+import hudson.AbortException;
 import hudson.Extension;
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
@@ -28,70 +31,66 @@ import hudson.model.BuildListener;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
 import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
+import java.io.IOException;
 import java.io.PrintStream;
 
-/**
- * Created by rapi on 20.10.2014.
- */
 public class PerfSigActivateConfiguration extends Builder {
-    private final String configuration;
+    private final String dynatraceProfile, configuration;
 
     @DataBoundConstructor
-    public PerfSigActivateConfiguration(final String configuration) {
+    public PerfSigActivateConfiguration(final String dynatraceProfile, final String configuration) {
+        this.dynatraceProfile = dynatraceProfile;
         this.configuration = configuration;
     }
 
     @Override
-    public boolean perform(final AbstractBuild build, final Launcher launcher, final BuildListener listener) {
-        final PrintStream logger = listener.getLogger();
-        final PerfSigRecorder dtRecorder = PerfSigUtils.getRecorder(build);
+    public boolean perform(final AbstractBuild<?, ?> build, final Launcher launcher, final BuildListener listener) throws InterruptedException, IOException {
+        PrintStream logger = listener.getLogger();
 
-        if (dtRecorder == null) {
-            logger.println(Messages.PerfSigActivateConfiguration_NoRecorderFailure());
-            return false;
-        }
+        DynatraceServerConfiguration serverConfiguration = PerfSigUtils.getServerConfiguration(dynatraceProfile);
+        if (serverConfiguration == null)
+            throw new AbortException("failed to lookup Dynatrace server configuration");
+
+        CredProfilePair pair = serverConfiguration.getCredProfilePair(dynatraceProfile);
+        if (pair == null)
+            throw new AbortException("failed to lookup Dynatrace server profile");
 
         logger.println(Messages.PerfSigActivateConfiguration_ActivatingProfileConfiguration());
-        final DTServerConnection connection = new DTServerConnection(dtRecorder.getProtocol(), dtRecorder.getHost(), dtRecorder.getPort(),
-                dtRecorder.getUsername(), dtRecorder.getPassword(), dtRecorder.isVerifyCertificate(), dtRecorder.getCustomProxy());
+        final DTServerConnection connection = new DTServerConnection(serverConfiguration, pair);
 
-        try {
-            boolean result = connection.activateConfiguration(dtRecorder.getProfile(), this.configuration);
-            if (!result) throw new RESTErrorException(Messages.PerfSigActivateConfiguration_InternalError());
-            logger.println(Messages.PerfSigActivateConfiguration_SuccessfullyActivated() + dtRecorder.getProfile());
+        boolean result = connection.activateConfiguration(this.configuration);
+        if (!result)
+            throw new CommandExecutionException(Messages.PerfSigActivateConfiguration_InternalError());
+        logger.println(Messages.PerfSigActivateConfiguration_SuccessfullyActivated() + pair.getProfile());
 
-            for (Agent agent : connection.getAgents()) {
-                if (agent.getSystemProfile().equalsIgnoreCase(dtRecorder.getProfile())) {
-                    boolean hotSensorPlacement = connection.hotSensorPlacement(agent.getAgentId());
-                    if (hotSensorPlacement) {
-                        logger.println(Messages.PerfSigActivateConfiguration_HotSensorPlacementDone() + " " + agent.getName());
-                    } else {
-                        logger.println(Messages.PerfSigActivateConfiguration_FailureActivation() + " " + agent.getName());
-                    }
+        for (Agent agent : connection.getAgents()) {
+            if (agent.getSystemProfile().equalsIgnoreCase(pair.getProfile())) {
+                boolean hotSensorPlacement = connection.hotSensorPlacement(agent.getAgentId());
+                if (hotSensorPlacement) {
+                    logger.println(Messages.PerfSigActivateConfiguration_HotSensorPlacementDone() + " " + agent.getName());
+                } else {
+                    logger.println(Messages.PerfSigActivateConfiguration_FailureActivation() + " " + agent.getName());
                 }
             }
-            return true;
-        } catch (RESTErrorException e) {
-            logger.println(Messages.PerfSigActivateConfiguration_FailureActivation() + dtRecorder.getProfile() + " " + e);
-            return !dtRecorder.isTechnicalFailure();
         }
+        return true;
+    }
+
+    public String getDynatraceProfile() {
+        return dynatraceProfile;
     }
 
     public String getConfiguration() {
         return configuration;
     }
 
-    @Extension // This indicates to Jenkins that this is an implementation of an extension point.
+    @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
-
-        public DescriptorImpl() {
-            load();
-        }
-
         public FormValidation doCheckConfiguration(@QueryParameter final String configuration) {
             FormValidation validationResult;
             if (StringUtils.isNotBlank(configuration)) {
@@ -102,14 +101,26 @@ public class PerfSigActivateConfiguration extends Builder {
             return validationResult;
         }
 
+        public ListBoxModel doFillDynatraceProfileItems() {
+            return PerfSigUtils.listToListBoxModel(PerfSigUtils.getDTConfigurations());
+        }
+
+        public ListBoxModel doFillConfigurationItems(@QueryParameter final String dynatraceProfile) {
+            DynatraceServerConfiguration serverConfiguration = PerfSigUtils.getServerConfiguration(dynatraceProfile);
+            if (serverConfiguration != null) {
+                CredProfilePair pair = serverConfiguration.getCredProfilePair(dynatraceProfile);
+                if (pair != null) {
+                    DTServerConnection connection = new DTServerConnection(serverConfiguration, pair);
+                    return PerfSigUtils.listToListBoxModel(connection.getProfileConfigurations());
+                }
+            }
+            return null;
+        }
+
         public boolean isApplicable(final Class<? extends AbstractProject> aClass) {
-            // Indicates that this builder can be used with all kinds of project types
             return true;
         }
 
-        /**
-         * This human readable name is used in the configuration screen.
-         */
         public String getDisplayName() {
             return Messages.PerfSigActivateConfiguration_DisplayName();
         }

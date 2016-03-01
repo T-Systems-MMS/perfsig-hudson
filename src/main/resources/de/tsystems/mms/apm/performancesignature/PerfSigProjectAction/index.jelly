@@ -16,23 +16,23 @@
 
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:l="/lib/layout" xmlns:fmt="jelly:fmt">
-    <l:layout title="Performance Signature Overview for ${it.project.name}">
+    <l:layout title="Performance Signature Overview for ${it.job.name}">
         <l:header>
-            <link type="text/css" href="${resURL}/plugin/performance-signature/css/bootstrap.min.css"
+            <link type="text/css" href="${resURL}/plugin/${it.urlName}/css/bootstrap.min.css"
                   rel="stylesheet"/>
-            <link type="text/css" href="${resURL}/plugin/performance-signature/css/dataTables.bootstrap.min.css"
+            <link type="text/css" href="${resURL}/plugin/${it.urlName}/css/dataTables.bootstrap.min.css"
                   rel="stylesheet"/>
-            <link type="text/css" href="${resURL}/plugin/performance-signature/css/jquery.gridster.min.css"
+            <link type="text/css" href="${resURL}/plugin/${it.urlName}/css/jquery.gridster.min.css"
                   rel="stylesheet"/>
-            <link type="text/css" href="${resURL}/plugin/performance-signature/css/lightbox.min.css"
+            <link type="text/css" href="${resURL}/plugin/${it.urlName}/css/lightbox.min.css"
                   rel="stylesheet"/>
         </l:header>
-        <st:include it="${it.project}" page="sidepanel.jelly"/>
+        <st:include it="${it.job}" page="sidepanel.jelly"/>
         <j:set var="trpa" value="${it.testResultProjectAction}"/>
         <j:set var="tr" value="${trpa.lastTestResultAction}"/>
         <l:main-panel>
             <div class="tw-bs">
-                <h1>${%Performance Signature for} ${it.project.name}</h1>
+                <h1>${%Performance Signature for} ${it.job.name}</h1>
                 <ul class="nav nav-tabs" role="tablist" id="tabList">
                     <j:forEach var="lastDashboardReport" items="${it.lastDashboardReports}">
                         <li role="presentation">
@@ -49,21 +49,21 @@
                         <j:set var="isUnitTest" value="${lastDashboardReport.isUnitTest() and tr.previousResult!=null}"/>
                         <div role="tabpanel fade" class="tab-pane" id="${lastDashboardReport.name}">
                             <div class="row-fluid">
-                                <div class="col-md-4" style="padding-left: 0;">
+                                <div class="col-md-8" style="padding-left: 0;">
                                     <h2>${%Testcase:} ${lastDashboardReport.name}</h2>
                                 </div>
                                 <button style="height: 30px; margin-top: 20px; margin-bottom: 10px;" type="button"
-                                        class="btn btn-primary pull-right" id="editbutton">
+                                        class="btn btn-primary" id="editbutton">
                                     <span class="glyphicon glyphicon-pencil" aria-hidden="true"/>
                                     Edit
                                 </button>
                                 <button style="height: 30px; margin-top: 20px; margin-bottom: 10px; margin-left: 5px; display: none;"
-                                        type="button" class="btn btn-success pull-right" id="donebutton">
+                                        type="button" class="btn btn-success" id="donebutton">
                                     <span class="glyphicon glyphicon-ok" aria-hidden="true"/>
                                     Done
                                 </button>
                                 <button style="height: 30px; margin-top: 20px; margin-bottom: 10px; margin-left: 5px; display: none;"
-                                        type="button" class="btn btn-danger pull-right" id="cancelbutton">
+                                        type="button" class="btn btn-danger" id="cancelbutton">
                                     <span class="glyphicon glyphicon-remove" aria-hidden="true"/>
                                     Cancel
                                 </button>
@@ -86,11 +86,11 @@
                                             </j:forEach>
                                         </select>
                                     </div>
-                                    <div class="form-group col-md-3">
+                                    <div class="form-group col-md-2">
                                         <label for="measure">Select Measure:</label>
                                         <select class="form-control" id="measure"/>
                                     </div>
-                                    <div class="form-group col-md-3">
+                                    <div class="form-group col-md-2">
                                         <label for="measurename">custom measure name</label>
                                         <input type="text" class="form-control" id="customName" placeholder="measure name"/>
                                     </div>
@@ -98,7 +98,7 @@
                                         <label for="buildcount">custom build count</label>
                                         <input type="number" class="form-control" id="customBuildCount" placeholder="0"/>
                                     </div>
-                                    <div class="form-group col-md-2">
+                                    <div class="form-group col-md-1">
                                         <button style="height: 30px; margin-top: 20px; margin-bottom: 10px;" type="button"
                                                 class="btn btn-primary" id="addbutton">
                                             <span class="glyphicon glyphicon-plus" aria-hidden="true"/>
@@ -147,25 +147,27 @@
                                     <j:forEach var="dashboardReport" items="${it.getDashBoardReports(lastDashboardReport.name)}">
                                         <tr>
                                             <td>
-                                                <a href="../${dashboardReport.buildAction.build.number}/performance-signature/#${lastDashboardReport.name}">
-                                                    <b>${dashboardReport.buildAction.build.number}</b>
+                                                <a href="../${dashboardReport.key.number}/${it.urlName}/#${lastDashboardReport.name}">
+                                                    <b>${dashboardReport.key.number}</b>
                                                 </a>
                                             </td>
                                             <j:set var="file"
-                                                   value="${it.PerfSigUtils.getDownloadFiles('Comparison.*' + dashboardReport.name + '_.*pdf',dashboardReport.build)}"/>
+                                                   value="${it.PerfSigUtils.getDownloadFiles('Comparison.*' + lastDashboardReport.name + '_.*pdf',dashboardReport.key)}"/>
                                             <td>
                                                 <j:if test="${file.size()!=0}">
                                                     <a href="./downloadFile?f=${file.get(0).name}" target="_blank">
-                                                        <img src="${resURL}/plugin/performance-signature/images/pdficon_small.png"/>
+                                                        <img src="${resURL}/plugin/${it.urlName}/images/pdficon_small.png"/>
                                                     </a>
                                                 </j:if>
                                             </td>
                                             <td>
-                                                <fmt:formatDate dateStyle="medium" type="both" value="${dashboardReport.buildTime}"/>
+                                                <fmt:formatDate dateStyle="medium" type="both"
+                                                                value="${dashboardReport.key.time}"/>
                                             </td>
                                             <j:if test="${isUnitTest}">
-                                                <j:set var="testRun" value="${it.getTestRun(dashboardReport.buildAction.build.number)}"/>
-                                                <j:set var="testResult" value="${it.getTestAction(dashboardReport.buildAction.build.number)}"/>
+                                                <j:set var="testRun" value="${it.getTestRun(dashboardReport.key)}"/>
+                                                <j:set var="testResult"
+                                                       value="${it.getTestAction(dashboardReport.key)}"/>
                                                 <td class="nowrap">${it.PerfSigUtils.getDurationString(testResult.duration)}</td>
                                                 <td>${testResult.failCount}</td>
                                                 <td>${testRun.numFailed}</td>
@@ -177,7 +179,8 @@
                                                 <td>${testRun.numPassed}</td>
                                                 <td>${testResult.totalCount}</td>
                                             </j:if>
-                                            <j:forEach var="chartDashlet" items="${it.getFilteredChartDashlets(dashboardReport)}">
+                                            <j:forEach var="chartDashlet"
+                                                       items="${it.getFilteredChartDashlets(dashboardReport.value)}">
                                                 <j:forEach var="measure" items="${chartDashlet.measures}">
                                                     <td>${measure.strMetricValue}</td>
                                                 </j:forEach>
@@ -191,8 +194,8 @@
                 </div>
             </div>
             <br style="clear:both;"/>
-            <script data-main="${resURL}/plugin/performance-signature/js/projectaction"
-                    src="${resURL}/plugin/performance-signature/js/require.min.js"/>
+            <script data-main="${resURL}/plugin/${it.urlName}/js/projectaction"
+                    src="${resURL}/plugin/${it.urlName}/js/require.min.js"/>
             <script type="text/javascript">
                 var rootURL = "${rootURL}";
                 var resURL = "${resURL}";

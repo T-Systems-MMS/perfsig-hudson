@@ -28,14 +28,16 @@
 
 package de.tsystems.mms.apm.performancesignature.dynatrace.rest;
 
-import de.tsystems.mms.apm.performancesignature.PerfSigRecorder;
 import de.tsystems.mms.apm.performancesignature.dynatrace.model.*;
+import de.tsystems.mms.apm.performancesignature.model.CredProfilePair;
 import de.tsystems.mms.apm.performancesignature.model.CustomProxy;
-import de.tsystems.mms.apm.performancesignature.util.PerfSigUtils;
+import de.tsystems.mms.apm.performancesignature.model.DynatraceServerConfiguration;
 import hudson.FilePath;
 import hudson.ProxyConfiguration;
-import hudson.util.IOUtils;
+import hudson.model.Hudson;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.XMLReader;
@@ -50,18 +52,13 @@ import java.net.*;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.Inflater;
 import java.util.zip.InflaterInputStream;
 
-/**
- * Created by rapi on 25.04.2014.
- */
 public class DTServerConnection {
-    private static final Logger logger = Logger.getLogger(DTServerConnection.class.getName());
-
     private final String address, user, password;
     private final boolean verifyCertificate;
     // Dynatrace is unable to provide proper Certs to trust by default
@@ -71,16 +68,18 @@ public class DTServerConnection {
             return true;
         }
     };
+    private final String systemProfile;
     private Proxy proxy;
     private SSLContext sc;
 
-    public DTServerConnection(final String protocol, final String host, final int port, final String username,
-                              final String password, final boolean verifyCertificate, final CustomProxy customProxy) {
-        this.address = protocol + "://" + (host != null ? host : PerfSigRecorder.DescriptorImpl.getDefaultHost()) + ":" +
-                (port != 0 ? port : PerfSigRecorder.DescriptorImpl.getDefaultPort());
-        this.user = username != null ? username : PerfSigRecorder.DescriptorImpl.getDefaultUsername();
-        this.password = password != null ? password : PerfSigRecorder.DescriptorImpl.getDefaultPassword();
+    public DTServerConnection(final String protocol, final String host, final int port, final CredProfilePair pair,
+                              final boolean verifyCertificate, final CustomProxy customProxy) {
+        this.address = protocol + "://" + host + ":" + port;
+        this.user = pair.getUsername();
+        this.password = pair.getPassword();
         this.verifyCertificate = verifyCertificate;
+        this.proxy = Proxy.NO_PROXY;
+        this.systemProfile = pair.getProfile();
 
         // Install the all-trusting trust manager
         try {
@@ -105,8 +104,9 @@ public class DTServerConnection {
         }
 
         if (customProxy != null) {
-            if (customProxy.isUseJenkinsProxy() && PerfSigUtils.getInstanceOrDie().proxy != null) {
-                final ProxyConfiguration proxyConfiguration = PerfSigUtils.getInstanceOrDie().proxy;
+            Hudson hudson = Hudson.getInstance();
+            if (customProxy.isUseJenkinsProxy() && hudson.proxy != null) {
+                final ProxyConfiguration proxyConfiguration = hudson.proxy;
                 if (StringUtils.isNotBlank(proxyConfiguration.name) && proxyConfiguration.port > 0) {
                     this.proxy = new java.net.Proxy(java.net.Proxy.Type.HTTP, new InetSocketAddress(proxyConfiguration.name, proxyConfiguration.port));
                     if (StringUtils.isNotBlank(proxyConfiguration.getUserName())) {
@@ -117,9 +117,6 @@ public class DTServerConnection {
                         };
                         Authenticator.setDefault(authenticator);
                     }
-                    logger.info("using customProxy: " + proxyConfiguration.name + ":" + proxyConfiguration.port);
-                } else {
-                    this.proxy = java.net.Proxy.NO_PROXY;
                 }
             } else {
                 if (StringUtils.isNotBlank(customProxy.getProxyServer()) && customProxy.getProxyPort() > 0) {
@@ -132,32 +129,28 @@ public class DTServerConnection {
                         };
                         Authenticator.setDefault(authenticator);
                     }
-                    logger.info("using customProxy: " + customProxy.getProxyServer() + ":" + customProxy.getProxyPort());
-                } else {
-                    this.proxy = java.net.Proxy.NO_PROXY;
                 }
             }
-        } else {
-            this.proxy = java.net.Proxy.NO_PROXY;
         }
     }
 
-    public TestRun getTestRunFromXML(final String profileName, final String uuid) {
+    public DTServerConnection(final DynatraceServerConfiguration config, final CredProfilePair pair) {
+        this(config.getProtocol(), config.getHost(), config.getPort(), pair, config.isVerifyCertificate(), config.getCustomProxy());
+    }
+
+    public TestRun getTestRunFromXML(final String uuid) {
         ManagementURLBuilder builder = new ManagementURLBuilder();
         builder.setServerAddress(this.address);
-        URL url = builder.testRunDetailsURL(profileName, uuid);
-        TestRun testRun;
+        URL url = builder.testRunDetailsURL(systemProfile, uuid);
         try {
             XMLReader xr = XMLReaderFactory.createXMLReader();
             TestRunDetailsXMLHandler handler = new TestRunDetailsXMLHandler();
             xr.setContentHandler(handler);
             xr.parse(new InputSource(getInputStream(url)));
-            testRun = handler.getParsedObjects();
+            return handler.getParsedObjects();
         } catch (Exception ex) {
-            throw new ContentRetrievalException("Could not retrieve records from Dynatrace server: " + url.toString(), ex);
+            throw new ContentRetrievalException(ExceptionUtils.getStackTrace(ex) + "Could not retrieve records from Dynatrace server: " + url.toString(), ex);
         }
-
-        return testRun;
     }
 
     public DashboardReport getDashboardReportFromXML(final String dashBoardName, final String sessionName, final String testCaseName) {
@@ -175,7 +168,7 @@ public class DTServerConnection {
             chartDashlets = handler.getParsedObjects();
             incidentCharts = handler.getIncidents();
         } catch (Exception ex) {
-            throw new ContentRetrievalException("Could not retrieve records from Dynatrace server: " + url.toString(), ex);
+            throw new ContentRetrievalException(ExceptionUtils.getStackTrace(ex) + "Could not retrieve records from Dynatrace server: " + url.toString(), ex);
         }
 
         dashboardReport.setChartDashlets(chartDashlets);
@@ -211,14 +204,7 @@ public class DTServerConnection {
             return;
         }
         conn.setDoOutput(true);
-        OutputStreamWriter wr = null;
-        try {
-            wr = new OutputStreamWriter(conn.getOutputStream(), "UTF-8");
-            wr.write(parameters);
-        } catch (IOException ignored) {
-        } finally {
-            IOUtils.closeQuietly(wr);
-        }
+        IOUtils.write(parameters, conn.getOutputStream());
     }
 
     private InputStream handleInputStream(final HttpURLConnection conn) throws IOException {
@@ -234,7 +220,7 @@ public class DTServerConnection {
         return resultingInputStream;
     }
 
-    private RESTResultXMLHandler getResultXMLHandler(final URLConnection conn) throws RESTErrorException, IOException, SAXException {
+    private RESTResultXMLHandler getResultXMLHandler(final URLConnection conn) throws IOException, SAXException {
         HttpURLConnection httpURLConnection = (HttpURLConnection) conn;
         handleHTTPResponseCode(httpURLConnection);
 
@@ -246,7 +232,7 @@ public class DTServerConnection {
         return handler;
     }
 
-    private ProfileXMLHandler getProfileXMLHandler(final URLConnection conn) throws RESTErrorException, IOException, SAXException {
+    private ProfileXMLHandler getProfileXMLHandler(final URLConnection conn) throws IOException, SAXException {
         HttpURLConnection httpURLConnection = (HttpURLConnection) conn;
         handleHTTPResponseCode(httpURLConnection);
 
@@ -258,7 +244,7 @@ public class DTServerConnection {
         return handler;
     }
 
-    private AgentXMLHandler getAgentXMLHandler(final URLConnection conn) throws RESTErrorException, IOException, SAXException {
+    private AgentXMLHandler getAgentXMLHandler(final URLConnection conn) throws IOException, SAXException {
         HttpURLConnection httpURLConnection = (HttpURLConnection) conn;
         handleHTTPResponseCode(httpURLConnection);
 
@@ -270,7 +256,7 @@ public class DTServerConnection {
         return handler;
     }
 
-    private RESTStringArrayXMLHandler getStringArrayXMLHandler(final URLConnection conn) throws RESTErrorException, IOException, SAXException {
+    private RESTStringArrayXMLHandler getStringArrayXMLHandler(final URLConnection conn) throws IOException, SAXException {
         HttpURLConnection httpURLConnection = (HttpURLConnection) conn;
         handleHTTPResponseCode(httpURLConnection);
 
@@ -282,7 +268,7 @@ public class DTServerConnection {
         return handler;
     }
 
-    private RESTDumpStatusXMLHandler getDumpStatusXMLHandler(final URLConnection conn) throws RESTErrorException, IOException, SAXException {
+    private RESTDumpStatusXMLHandler getDumpStatusXMLHandler(final URLConnection conn) throws IOException, SAXException {
         HttpURLConnection httpURLConnection = (HttpURLConnection) conn;
         handleHTTPResponseCode(httpURLConnection);
 
@@ -294,7 +280,7 @@ public class DTServerConnection {
         return handler;
     }
 
-    private void handleHTTPResponseCode(final HttpURLConnection httpURLConnection) throws RESTErrorException, IOException, SAXException {
+    private void handleHTTPResponseCode(final HttpURLConnection httpURLConnection) throws IOException, SAXException {
         XMLReader xr = XMLReaderFactory.createXMLReader();
         if (httpURLConnection.getResponseCode() >= 300) {
             if (httpURLConnection.getResponseCode() == 401) {
@@ -365,43 +351,36 @@ public class DTServerConnection {
         }
     }
 
-    public String startRecording(final String profileName, final String sessionName, final String description, final String recordingOption,
+    public String startRecording(final String sessionName, final String description, final String recordingOption,
                                  final boolean sessionLocked, final boolean isNoTimestamp) throws RESTErrorException {
         try {
             ManagementURLBuilder builder = new ManagementURLBuilder();
             builder.setServerAddress(this.address);
-            URL commandURL = builder.startRecordingURL(profileName, sessionName, description, recordingOption, sessionLocked, isNoTimestamp);
+            URL commandURL = builder.startRecordingURL(systemProfile, sessionName, description, recordingOption, sessionLocked, isNoTimestamp);
             URLConnection conn = commandURL.openConnection(proxy);
-
             addAuthenticationHeader(conn);
             addPostHeaders(conn, builder.getPostParameters());
 
             RESTResultXMLHandler handler = getResultXMLHandler(conn);
             return handler.getResultString();
-        } catch (SAXException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (Exception ex) {
+            throw new CommandExecutionException("Error start recording session: " + ex.getMessage(), ex);
         }
-        return null;
     }
 
-    public String stopRecording(final String profileName) throws RESTErrorException {
+    public String stopRecording() throws RESTErrorException {
         try {
             ManagementURLBuilder builder = new ManagementURLBuilder();
             builder.setServerAddress(this.address);
-            URL commandURL = builder.stopRecordingURL(profileName);
+            URL commandURL = builder.stopRecordingURL(systemProfile);
             URLConnection conn = commandURL.openConnection(proxy);
             addAuthenticationHeader(conn);
 
             RESTResultXMLHandler handler = getResultXMLHandler(conn);
             return handler.getResultString();
-        } catch (SAXException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
+        } catch (Exception ex) {
+            throw new CommandExecutionException("Error stop recording session: " + ex.getMessage(), ex);
         }
-        return null;
     }
 
     public List<String> getSessions() {
@@ -434,7 +413,7 @@ public class DTServerConnection {
         }
     }
 
-    public List<BaseConfiguration> getProfiles() {
+    public List<BaseConfiguration> getSystemProfiles() {
         try {
             ManagementURLBuilder builder = new ManagementURLBuilder();
             builder.setServerAddress(this.address);
@@ -449,27 +428,26 @@ public class DTServerConnection {
         }
     }
 
-    //ToDo implement getConfigurations in activate ProfileConfiguration Builder
-    public List<BaseConfiguration> getConfigurations(final String profileName) {
+    public List<BaseConfiguration> getProfileConfigurations() {
         try {
             ManagementURLBuilder builder = new ManagementURLBuilder();
             builder.setServerAddress(this.address);
-            URL commandURL = builder.listConfigurationsURL(profileName);
+            URL commandURL = builder.listConfigurationsURL(systemProfile);
             URLConnection conn = commandURL.openConnection(proxy);
             addAuthenticationHeader(conn);
 
             ProfileXMLHandler handler = getProfileXMLHandler(conn);
             return handler.getConfigurationObjects();
         } catch (Exception ex) {
-            throw new CommandExecutionException("Error listing configurations of profile " + profileName + ": " + ex.getMessage(), ex);
+            throw new CommandExecutionException("Error listing configurations of profile " + systemProfile + ": " + ex.getMessage(), ex);
         }
     }
 
-    public boolean activateConfiguration(final String profileName, final String configuration) {
+    public boolean activateConfiguration(final String configuration) {
         try {
             ManagementURLBuilder builder = new ManagementURLBuilder();
             builder.setServerAddress(this.address);
-            URL commandURL = builder.activateConfigurationURL(profileName, configuration);
+            URL commandURL = builder.activateConfigurationURL(systemProfile, configuration);
             URLConnection conn = commandURL.openConnection(proxy);
             addAuthenticationHeader(conn);
 
@@ -480,7 +458,7 @@ public class DTServerConnection {
         }
     }
 
-    public List<Agent> getAgents() {
+    public List<Agent> getAllAgents() {
         try {
             ManagementURLBuilder builder = new ManagementURLBuilder();
             builder.setServerAddress(this.address);
@@ -493,6 +471,16 @@ public class DTServerConnection {
         } catch (Exception ex) {
             throw new CommandExecutionException("Error listing agents: " + ex.getMessage(), ex);
         }
+    }
+
+    public List<Agent> getAgents() {
+        List<Agent> agents = getAllAgents();
+        List<Agent> filteredAgents = new ArrayList<Agent>();
+        for (Agent agent : agents) {
+            if (agent.getSystemProfile().equals(systemProfile))
+                filteredAgents.add(agent);
+        }
+        return filteredAgents;
     }
 
     public boolean hotSensorPlacement(final int agentId) {
@@ -539,11 +527,11 @@ public class DTServerConnection {
         }
     }
 
-    public String threadDump(final String profileName, final String agentName, final String hostName, final int processId, final boolean sessionLocked) {
+    public String threadDump(final String agentName, final String hostName, final int processId, final boolean sessionLocked) {
         try {
             ManagementURLBuilder builder = new ManagementURLBuilder();
             builder.setServerAddress(this.address);
-            URL commandURL = builder.threadDumpURL(profileName, agentName, hostName, processId, sessionLocked);
+            URL commandURL = builder.threadDumpURL(systemProfile, agentName, hostName, processId, sessionLocked);
             URLConnection conn = commandURL.openConnection(proxy);
             addAuthenticationHeader(conn);
             addPostHeaders(conn, builder.getPostParameters());
@@ -555,11 +543,11 @@ public class DTServerConnection {
         }
     }
 
-    public DumpStatus threadDumpStatus(final String profileName, final String threadDump) {
+    public DumpStatus threadDumpStatus(final String threadDump) {
         try {
             ManagementURLBuilder builder = new ManagementURLBuilder();
             builder.setServerAddress(this.address);
-            URL commandURL = builder.threadDumpStatusURL(profileName, threadDump);
+            URL commandURL = builder.threadDumpStatusURL(systemProfile, threadDump);
             URLConnection conn = commandURL.openConnection(proxy);
             addAuthenticationHeader(conn);
 
@@ -570,12 +558,12 @@ public class DTServerConnection {
         }
     }
 
-    public String memoryDump(final String profileName, final String agentName, final String hostName, final int processId, final String dumpType,
+    public String memoryDump(final String agentName, final String hostName, final int processId, final String dumpType,
                              final boolean sessionLocked, final boolean captureStrings, final boolean capturePrimitives, final boolean autoPostProcess, final boolean dogC) {
         try {
             ManagementURLBuilder builder = new ManagementURLBuilder();
             builder.setServerAddress(this.address);
-            URL commandURL = builder.memoryDumpURL(profileName, agentName, hostName, processId, dumpType, sessionLocked, captureStrings, capturePrimitives, autoPostProcess, dogC);
+            URL commandURL = builder.memoryDumpURL(systemProfile, agentName, hostName, processId, dumpType, sessionLocked, captureStrings, capturePrimitives, autoPostProcess, dogC);
             URLConnection conn = commandURL.openConnection(proxy);
             addAuthenticationHeader(conn);
             addPostHeaders(conn, builder.getPostParameters());
@@ -587,11 +575,11 @@ public class DTServerConnection {
         }
     }
 
-    public DumpStatus memoryDumpStatus(final String profileName, final String memoryDump) {
+    public DumpStatus memoryDumpStatus(final String memoryDump) {
         try {
             ManagementURLBuilder builder = new ManagementURLBuilder();
             builder.setServerAddress(this.address);
-            URL commandURL = builder.memoryDumpStatusURL(profileName, memoryDump);
+            URL commandURL = builder.memoryDumpStatusURL(systemProfile, memoryDump);
             URLConnection conn = commandURL.openConnection(proxy);
             addAuthenticationHeader(conn);
 
@@ -602,7 +590,7 @@ public class DTServerConnection {
         }
     }
 
-    public String registerTestRun(final String systemProfile, final int versionBuild) {
+    public String registerTestRun(final int versionBuild) {
         try {
             RegisterTestRunRequest requestContent = new RegisterTestRunRequest();
             requestContent.setVersionBuild(String.valueOf(versionBuild));
@@ -629,10 +617,7 @@ public class DTServerConnection {
             conn.setRequestProperty("Content-Type", "text/xml");
 
             conn.setDoOutput(true);
-            DataOutputStream wr = new DataOutputStream(conn.getOutputStream());
-            wr.writeBytes(testMetaDataPostXml);
-            wr.flush();
-            IOUtils.closeQuietly(wr);
+            IOUtils.write(testMetaDataPostXml, conn.getOutputStream());
 
             handleHTTPResponseCode(conn);
             TestMetaDataXMLHandler handler = new TestMetaDataXMLHandler();

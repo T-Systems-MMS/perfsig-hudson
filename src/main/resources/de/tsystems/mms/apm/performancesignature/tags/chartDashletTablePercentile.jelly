@@ -17,6 +17,9 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:jm="/de/tsystems/mms/apm/performancesignature/tags">
     <h3>${it.name.replaceAll("\d+\w", "")}</h3>
+    <p>
+        ${it.description}
+    </p>
     <br/>
     <j:forEach var="measure" items="${it.measures}">
         <img style="margin: 3px;" class="img-thumbnail"
@@ -31,7 +34,7 @@
                 <th rowspan="2">${%Measure}</th>
                 <th colspan="4">${%Current Build}</th>
                 <j:if test="${previousDashboardReport!=null}">
-                    <th colspan="4">${%Previous Build} (#${previousDashboardReport.build.number})</th>
+                    <th colspan="4">${%Previous Build} (#${build.previousNotFailedBuild.number})</th>
                 </j:if>
             </tr>
             <tr>

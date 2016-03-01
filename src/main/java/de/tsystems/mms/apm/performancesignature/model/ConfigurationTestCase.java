@@ -18,6 +18,7 @@ package de.tsystems.mms.apm.performancesignature.model;
 
 import de.tsystems.mms.apm.performancesignature.dynatrace.rest.DTServerConnection;
 import de.tsystems.mms.apm.performancesignature.util.PerfSigUtils;
+import hudson.DescriptorExtensionList;
 import hudson.RelativePath;
 import hudson.model.AbstractProject;
 import hudson.model.Describable;
@@ -32,9 +33,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-/**
- * Created by rapi on 13.04.2015.
- */
 public abstract class ConfigurationTestCase implements Describable<ConfigurationTestCase>, Serializable {
     private final String name, xmlDashboard;
     private final List<Dashboard> singleDashboards;
@@ -84,12 +82,8 @@ public abstract class ConfigurationTestCase implements Describable<Configuration
             if (StringUtils.isNotBlank(testCase)) testCases.add(testCase);
         }
 
-        public static List<ConfigurationTestCaseDescriptor> all(final Class<? extends AbstractProject<?, ?>> jobType) {
+        public static DescriptorExtensionList<ConfigurationTestCase, Descriptor<ConfigurationTestCase>> all() {
             return PerfSigUtils.getInstanceOrDie().getDescriptorList(ConfigurationTestCase.class);
-        }
-
-        public static List<ConfigurationTestCaseDescriptor> all() {
-            return all(null);
         }
 
         public boolean isApplicable(final Class<? extends AbstractProject<?, ?>> jobType) {
@@ -103,20 +97,16 @@ public abstract class ConfigurationTestCase implements Describable<Configuration
             return out;
         }
 
-        public ListBoxModel doFillXmlDashboardItems(@RelativePath("..") @QueryParameter final String protocol, @RelativePath("..") @QueryParameter final String host,
-                                                    @RelativePath("..") @QueryParameter final int port, @RelativePath("..") @QueryParameter final String username,
-                                                    @RelativePath("..") @QueryParameter final String password,
-                                                    @RelativePath("..") @QueryParameter final boolean verifyCertificate, @RelativePath("..") @QueryParameter final boolean proxy,
-                                                    @RelativePath("..") @QueryParameter final int proxySource,
-                                                    @RelativePath("..") @QueryParameter final String proxyServer, @RelativePath("..") @QueryParameter final int proxyPort,
-                                                    @RelativePath("..") @QueryParameter final String proxyUser, @RelativePath("..") @QueryParameter final String proxyPassword) {
-
-            CustomProxy customProxyServer = null;
-            if (proxy) {
-                customProxyServer = new CustomProxy(proxyServer, proxyPort, proxyUser, proxyPassword, proxySource == 0);
+        public ListBoxModel doFillXmlDashboardItems(@RelativePath("..") @QueryParameter final String dynatraceProfile) {
+            DynatraceServerConfiguration serverConfiguration = PerfSigUtils.getServerConfiguration(dynatraceProfile);
+            if (serverConfiguration != null) {
+                CredProfilePair pair = serverConfiguration.getCredProfilePair(dynatraceProfile);
+                if (pair != null) {
+                    DTServerConnection connection = new DTServerConnection(serverConfiguration, pair);
+                    return PerfSigUtils.listToListBoxModel(connection.getDashboards());
+                }
             }
-            final DTServerConnection connection = new DTServerConnection(protocol, host, port, username, password, verifyCertificate, customProxyServer);
-            return PerfSigUtils.listToListBoxModel(connection.getDashboards());
+            return null;
         }
     }
 }

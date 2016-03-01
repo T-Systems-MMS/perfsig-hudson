@@ -19,7 +19,10 @@ package de.tsystems.mms.apm.performancesignature;
 import de.tsystems.mms.apm.performancesignature.dynatrace.model.Agent;
 import de.tsystems.mms.apm.performancesignature.dynatrace.rest.DTServerConnection;
 import de.tsystems.mms.apm.performancesignature.dynatrace.rest.RESTErrorException;
+import de.tsystems.mms.apm.performancesignature.model.CredProfilePair;
+import de.tsystems.mms.apm.performancesignature.model.DynatraceServerConfiguration;
 import de.tsystems.mms.apm.performancesignature.util.PerfSigUtils;
+import hudson.AbortException;
 import hudson.Extension;
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
@@ -28,68 +31,71 @@ import hudson.model.BuildListener;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
 import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
+import java.io.IOException;
 import java.io.PrintStream;
+import java.util.List;
 
-/**
- * Created by rapi on 20.10.2014.
- */
 public class PerfSigThreadDump extends Builder {
-    private final String agent, host;
-    private final boolean lockSession;
-    private int waitForDumpTimeout = 60000;
-    private int waitForDumpPollingInterval = 5000;
+    private static final int waitForDumpTimeout = 60000;
+    private static final int waitForDumpPollingInterval = 5000;
+    private final String dynatraceProfile, agent, host;
+    private boolean lockSession;
 
     @DataBoundConstructor
-    public PerfSigThreadDump(final String agent, final String host, final boolean lockSession) {
+    public PerfSigThreadDump(final String dynatraceProfile, final String agent, final String host, final boolean lockSession) {
+        this.dynatraceProfile = dynatraceProfile;
         this.agent = agent;
         this.host = host;
         this.lockSession = lockSession;
     }
 
     @Override
-    public boolean perform(final AbstractBuild build, final Launcher launcher, final BuildListener listener) {
-        final PrintStream logger = listener.getLogger();
-        final PerfSigRecorder dtRecorder = PerfSigUtils.getRecorder(build);
+    public boolean perform(final AbstractBuild<?, ?> build, final Launcher launcher, final BuildListener listener) throws InterruptedException, IOException {
+        PrintStream logger = listener.getLogger();
 
-        if (dtRecorder == null) {
-            logger.println(Messages.PerfSigThreadDump_NoRecorderFailure());
-            return false;
-        }
+        DynatraceServerConfiguration serverConfiguration = PerfSigUtils.getServerConfiguration(dynatraceProfile);
+        if (serverConfiguration == null)
+            throw new AbortException("failed to lookup Dynatrace server configuration");
 
-        final DTServerConnection connection = new DTServerConnection(dtRecorder.getProtocol(), dtRecorder.getHost(), dtRecorder.getPort(),
-                dtRecorder.getUsername(), dtRecorder.getPassword(), dtRecorder.isVerifyCertificate(), dtRecorder.getCustomProxy());
+        CredProfilePair pair = serverConfiguration.getCredProfilePair(dynatraceProfile);
+        if (pair == null)
+            throw new AbortException("failed to lookup Dynatrace server profile");
 
-        try {
-            for (Agent agent : connection.getAgents()) {
-                if (agent.getName().equalsIgnoreCase(this.agent) && agent.getSystemProfile().equalsIgnoreCase(dtRecorder.getProfile()) && agent.getHost().equalsIgnoreCase(this.host)) {
-                    logger.println("Creating Memory Dump for " + agent.getSystemProfile() + "-" + agent.getName() + "-" + agent.getHost() + "-" + agent.getProcessId());
+        final DTServerConnection connection = new DTServerConnection(serverConfiguration, pair);
+        List<Agent> agents = connection.getAgents();
 
-                    String threadDump = connection.threadDump(agent.getSystemProfile(), agent.getName(), agent.getHost(), agent.getProcessId(), getLockSession());
-                    int timeout = this.waitForDumpTimeout;
-                    boolean dumpFinished = connection.threadDumpStatus(agent.getSystemProfile(), threadDump).isResultValueTrue();
-                    while ((!dumpFinished) && (timeout > 0)) {
-                        Thread.sleep(this.waitForDumpPollingInterval);
-                        timeout -= this.waitForDumpPollingInterval;
-                        dumpFinished = connection.threadDumpStatus(agent.getSystemProfile(), threadDump).isResultValueTrue();
-                    }
-                    if (dumpFinished) {
-                        logger.println(Messages.PerfSigThreadDump_SuccessfullyCreatedThreadDump() + agent.getName());
-                        return true;
-                    } else {
-                        throw new RESTErrorException("Timeout is raised");
-                    }
+        for (Agent agent : agents) {
+            if (agent.getName().equals(this.agent) && agent.getSystemProfile().equals(pair.getProfile()) && agent.getHost().equals(this.host)) {
+                logger.println("Creating Memory Dump for " + agent.getSystemProfile() + "-" + agent.getName() + "-" + agent.getHost() + "-" + agent.getProcessId());
+
+                String threadDump = connection.threadDump(agent.getName(), agent.getHost(), agent.getProcessId(), getLockSession());
+                if (StringUtils.isBlank(threadDump))
+                    throw new RESTErrorException("Thread Dump wasnt taken");
+                int timeout = waitForDumpTimeout;
+                boolean dumpFinished = connection.threadDumpStatus(threadDump).isResultValueTrue();
+                while ((!dumpFinished) && (timeout > 0)) {
+                    Thread.sleep(waitForDumpPollingInterval);
+                    timeout -= waitForDumpPollingInterval;
+                    dumpFinished = connection.threadDumpStatus(threadDump).isResultValueTrue();
+                }
+                if (dumpFinished) {
+                    logger.println(Messages.PerfSigThreadDump_SuccessfullyCreatedThreadDump() + agent.getName());
+                    return true;
+                } else {
+                    throw new RESTErrorException("Timeout is raised");
                 }
             }
-        } catch (Exception e) {
-            logger.println(e);
-            return !dtRecorder.isTechnicalFailure();
         }
-        logger.println(String.format(Messages.PerfSigThreadDump_AgentNotConnected(), agent));
-        return !dtRecorder.isTechnicalFailure();
+        throw new AbortException(String.format(Messages.PerfSigThreadDump_AgentNotConnected(), agent));
+    }
+
+    public String getDynatraceProfile() {
+        return dynatraceProfile;
     }
 
     public String getAgent() {
@@ -104,16 +110,9 @@ public class PerfSigThreadDump extends Builder {
         return lockSession;
     }
 
-    @Extension // This indicates to Jenkins that this is an implementation of an extension point.
+    @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
-
-        public DescriptorImpl() {
-            load();
-        }
-
-        public static boolean getDefaultLockSession() {
-            return false;
-        }
+        public static final boolean defaultLockSession = false;
 
         public FormValidation doCheckAgent(@QueryParameter final String agent) {
             FormValidation validationResult;
@@ -135,14 +134,43 @@ public class PerfSigThreadDump extends Builder {
             return validationResult;
         }
 
+        public ListBoxModel doFillDynatraceProfileItems() {
+            return PerfSigUtils.listToListBoxModel(PerfSigUtils.getDTConfigurations());
+        }
+
+        public ListBoxModel doFillAgentItems(@QueryParameter final String dynatraceProfile) {
+            DynatraceServerConfiguration serverConfiguration = PerfSigUtils.getServerConfiguration(dynatraceProfile);
+            if (serverConfiguration != null) {
+                CredProfilePair pair = serverConfiguration.getCredProfilePair(dynatraceProfile);
+                if (pair != null) {
+                    DTServerConnection connection = new DTServerConnection(serverConfiguration, pair);
+                    return PerfSigUtils.listToListBoxModel(connection.getAgents());
+                }
+            }
+            return null;
+        }
+
+        public ListBoxModel doFillHostItems(@QueryParameter final String dynatraceProfile, @QueryParameter final String agent) {
+            DynatraceServerConfiguration serverConfiguration = PerfSigUtils.getServerConfiguration(dynatraceProfile);
+            if (serverConfiguration != null) {
+                CredProfilePair pair = serverConfiguration.getCredProfilePair(dynatraceProfile);
+                if (pair != null) {
+                    DTServerConnection connection = new DTServerConnection(serverConfiguration, pair);
+                    List<Agent> agents = connection.getAgents();
+                    ListBoxModel hosts = new ListBoxModel();
+                    for (Agent a : agents)
+                        if (a.getName().equals(agent))
+                            hosts.add(a.getHost());
+                    return hosts;
+                }
+            }
+            return null;
+        }
+
         public boolean isApplicable(final Class<? extends AbstractProject> aClass) {
-            // Indicates that this builder can be used with all kinds of project types
             return true;
         }
 
-        /**
-         * This human readable name is used in the agent screen.
-         */
         public String getDisplayName() {
             return Messages.PerfSigThreadDump_DisplayName();
         }

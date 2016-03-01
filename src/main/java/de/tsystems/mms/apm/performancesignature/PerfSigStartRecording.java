@@ -16,11 +16,15 @@
 
 package de.tsystems.mms.apm.performancesignature;
 
+import de.tsystems.mms.apm.performancesignature.dynatrace.model.BaseConfiguration;
+import de.tsystems.mms.apm.performancesignature.dynatrace.model.SystemProfile;
 import de.tsystems.mms.apm.performancesignature.dynatrace.rest.DTServerConnection;
-import de.tsystems.mms.apm.performancesignature.model.ConfigurationTestCase;
-import de.tsystems.mms.apm.performancesignature.model.GeneralTestCase;
-import de.tsystems.mms.apm.performancesignature.model.UnitTestCase;
+import de.tsystems.mms.apm.performancesignature.dynatrace.rest.RESTErrorException;
+import de.tsystems.mms.apm.performancesignature.model.CredProfilePair;
+import de.tsystems.mms.apm.performancesignature.model.DynatraceServerConfiguration;
+import de.tsystems.mms.apm.performancesignature.model.GenericTestCase;
 import de.tsystems.mms.apm.performancesignature.util.PerfSigUtils;
+import hudson.AbortException;
 import hudson.Extension;
 import hudson.Launcher;
 import hudson.model.*;
@@ -32,95 +36,73 @@ import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
+import java.io.IOException;
 import java.io.PrintStream;
 
-/**
- * Created by rapi on 17.05.2014.
- */
 public class PerfSigStartRecording extends Builder {
-    private final String testCase, recordingOption;
-    private final boolean lockSession;
+    private final String dynatraceProfile, testCase;
+    private String recordingOption;
+    private boolean lockSession;
 
     @DataBoundConstructor
-    public PerfSigStartRecording(final String testCase, final String recordingOption, final boolean lockSession) {
+    public PerfSigStartRecording(final String dynatraceProfile, final String testCase, final String recordingOption, final boolean lockSession) {
+        this.dynatraceProfile = dynatraceProfile;
         this.testCase = StringUtils.deleteWhitespace(testCase);
         this.recordingOption = recordingOption;
         this.lockSession = lockSession;
     }
 
     @Override
-    public boolean perform(final AbstractBuild build, final Launcher launcher, final BuildListener listener) {
-        // This is where you 'build' the project.
+    public boolean perform(final AbstractBuild<?, ?> build, final Launcher launcher, final BuildListener listener) throws InterruptedException, IOException {
         final PrintStream logger = listener.getLogger();
 
-        final PerfSigRecorder dtRecorder = PerfSigUtils.getRecorder(build);
-        final PerfSigStopRecording dtStopRecording = PerfSigUtils.getPerfSigBuilder(build, PerfSigStopRecording.class);
+        DynatraceServerConfiguration serverConfiguration = PerfSigUtils.getServerConfiguration(dynatraceProfile);
+        if (serverConfiguration == null)
+            throw new AbortException("failed to lookup Dynatrace server configuration");
 
-        if (dtRecorder == null) {
-            logger.println(Messages.PerfSigStartRecording_MissingConfiguration());
-            return false;
-        }
-        if (dtStopRecording == null) {
-            logger.println(Messages.PerfSigStartRecording_MissingStopRecording());
-            return !dtRecorder.isTechnicalFailure();
-        }
+        CredProfilePair pair = serverConfiguration.getCredProfilePair(dynatraceProfile);
+        if (pair == null)
+            throw new AbortException("failed to lookup Dynatrace server profile");
 
         logger.println("starting session recording ...");
-
-        final DTServerConnection connection = new DTServerConnection(dtRecorder.getProtocol(), dtRecorder.getHost(), dtRecorder.getPort(),
-                dtRecorder.getUsername(), dtRecorder.getPassword(), dtRecorder.isVerifyCertificate(), dtRecorder.getCustomProxy());
+        final DTServerConnection connection = new DTServerConnection(serverConfiguration, pair);
         if (!connection.validateConnection()) {
-            logger.println(Messages.PerfSigRecorder_DTConnectionError());
-            return !dtRecorder.isTechnicalFailure();
+            throw new RESTErrorException(Messages.PerfSigRecorder_DTConnectionError());
         }
 
-        try {
-            String testRunId = null;
-            for (ConfigurationTestCase tc : dtRecorder.getConfigurationTestCases()) {
-                if (tc.getName().equals(this.testCase) && tc instanceof UnitTestCase) {
-                    logger.println("registering new TestRun");
-
-                    testRunId = connection.registerTestRun(dtRecorder.getProfile(), build.getNumber());
-                    if (testRunId != null) {
-                        logger.println(String.format(Messages.PerfSigStartRecording_StartedTestRun(), dtRecorder.getProfile(), testRunId));
-                        logger.println("Dynatrace: registered test run " + testRunId + "" +
-                                " (available in the environment as " + PerfSigRegisterEnvVars.TESTRUN_ID_KEY +
-                                " and " + PerfSigRegisterEnvVars.SESSIONCOUNT + ")");
-                    } else {
-                        logger.println("Warning: Could not register TestRun");
-                    }
-                    break;
-                }
+        for (BaseConfiguration profile : connection.getSystemProfiles()) {
+            SystemProfile systemProfile = (SystemProfile) profile;
+            if (pair.getProfile().equals(systemProfile.getId()) && systemProfile.isRecording()) {
+                logger.println("another Sesssion is still recording, trying to stop recording");
+                PerfSigStopRecording stopRecording = new PerfSigStopRecording(dynatraceProfile, false);
+                stopRecording.perform(build, launcher, listener);
+                break;
             }
-
-            final String testCase = build.getEnvironment(listener).expand(this.testCase);
-            String sessionName = dtRecorder.getProfile() + "_" + build.getProject().getName() + "_Build-" + build.getNumber() + "_" + testCase;
-            sessionName = sessionName.replace("/", "_");
-            final String result = connection.startRecording(dtRecorder.getProfile(), sessionName, "This Session is triggered by Hudson", this.recordingOption, lockSession, false);
-
-            if (result != null && result.equals(sessionName)) {
-                logger.println(String.format(Messages.PerfSigStartRecording_StartedSessionRecording(), dtRecorder.getProfile(), result));
-                build.addAction(new PerfSigRegisterEnvVars(sessionName, testCase, testRunId));
-                return true;
-            }
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            logger.println(String.format(Messages.PerfSigStartRecording_SessionRecordingError(), dtRecorder.getProfile(), e.getMessage()));
-            if (e.getMessage().contains("already started")) {
-                try {
-                    dtStopRecording.perform(build, launcher, listener);
-                    Thread.sleep(10000);
-                    this.perform(build, launcher, listener);
-                } catch (Exception ex) {
-                    logger.println(ex);
-                    return !dtRecorder.isTechnicalFailure();
-                }
-            }
-            return !dtRecorder.isTechnicalFailure();
         }
-        logger.println(String.format(Messages.PerfSigStartRecording_SessionRecordingError(), dtRecorder.getProfile(), ""));
-        return !dtRecorder.isTechnicalFailure();
+
+        logger.println("registering new TestRun");
+        String testRunId = connection.registerTestRun(build.getNumber());
+        if (testRunId != null) {
+            logger.println(String.format(Messages.PerfSigStartRecording_StartedTestRun(), pair.getProfile(), testRunId));
+            logger.println("Dynatrace: registered test run " + testRunId + "" +
+                    " (available as environment variables " + PerfSigEnvContributor.TESTRUN_ID_KEY +
+                    " and " + PerfSigEnvContributor.SESSIONCOUNT + ")");
+        } else {
+            logger.println("Warning: Could not register TestRun");
+        }
+
+        final String testCase = build.getEnvironment(listener).expand(this.testCase);
+        String sessionName = pair.getProfile() + "_" + build.getParent().getName() + "_Build-" + build.getNumber() + "_" + testCase;
+        sessionName = sessionName.replace("/", "_");
+
+        final String result = connection.startRecording(sessionName, "This Session is triggered by Jenkins", getRecordingOption(), lockSession, false);
+        if (result != null && result.equals(sessionName)) {
+            logger.println(String.format(Messages.PerfSigStartRecording_StartedSessionRecording(), pair.getProfile(), result));
+            build.addAction(new PerfSigEnvInvisAction(sessionName, testCase, testRunId));
+        } else {
+            throw new RESTErrorException(String.format(Messages.PerfSigStartRecording_SessionRecordingError(), pair.getProfile()));
+        }
+        return true;
     }
 
     public String getTestCase() {
@@ -128,23 +110,21 @@ public class PerfSigStartRecording extends Builder {
     }
 
     public String getRecordingOption() {
-        return recordingOption;
+        return recordingOption == null ? DescriptorImpl.defaultRecordingOption : recordingOption;
     }
 
     public boolean getLockSession() {
         return lockSession;
     }
 
-    @Extension // This indicates to Jenkins that this is an implementation of an extension point.
+    public String getDynatraceProfile() {
+        return dynatraceProfile;
+    }
+
+    @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
-
-        public DescriptorImpl() {
-            load();
-        }
-
-        public static boolean getDefaultLockSession() {
-            return false;
-        }
+        public static final boolean defaultLockSession = false;
+        public static final String defaultRecordingOption = "all";
 
         public ListBoxModel doFillRecordingOptionItems() {
             return new ListBoxModel(new ListBoxModel.Option("all"), new ListBoxModel.Option("violations"), new ListBoxModel.Option("timeseries"));
@@ -153,21 +133,21 @@ public class PerfSigStartRecording extends Builder {
         public FormValidation doCheckTestCase(@QueryParameter final String testCase) {
             try {
                 Hudson.checkGoodName(testCase);
-                GeneralTestCase.DescriptorImpl.addTestCases(testCase);
+                GenericTestCase.DescriptorImpl.addTestCases(testCase);
                 return FormValidation.ok();
             } catch (Failure e) {
                 return FormValidation.error(e.getMessage());
             }
         }
 
+        public ListBoxModel doFillDynatraceProfileItems() {
+            return PerfSigUtils.listToListBoxModel(PerfSigUtils.getDTConfigurations());
+        }
+
         public boolean isApplicable(final Class<? extends AbstractProject> aClass) {
-            // Indicates that this builder can be used with all kinds of project types
             return true;
         }
 
-        /**
-         * This human readable name is used in the configuration screen.
-         */
         public String getDisplayName() {
             return Messages.PerfSigStartRecording_DisplayName();
         }
