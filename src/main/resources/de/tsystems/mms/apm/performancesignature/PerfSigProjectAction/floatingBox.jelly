@@ -15,7 +15,7 @@
   -->
 
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler">
+<j:jelly xmlns:j="jelly:core">
     <j:if test="${from.lastDashboardReports != null}">
         <link type="text/css" href="${resURL}/plugin/${from.urlName}/css/bootstrap.min.css" rel="stylesheet"/>
         <style type="text/css">
@@ -67,7 +67,6 @@
             <br style="clear:both;"/>
         </div>
     </j:if>
-    <st:bind var="projectAction" value="${from}"/>
     <script data-main="${resURL}/plugin/${from.urlName}/js/floatingBox"
             src="${resURL}/plugin/${from.urlName}/js/require.min.js"/>
     <script type="text/javascript">
