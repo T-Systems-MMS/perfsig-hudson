@@ -17,7 +17,7 @@
 require.config({
     baseUrl: resURL + '/plugin/performance-signature/js/',
     paths: {
-        'jquery': "jquery-1.11.3.min",
+        'jquery': "jquery-2.2.1.min",
         'bootstrap': "bootstrap.min",
         'datatables.net': "jquery.dataTables.min",
         'datatables.bootstrap': "dataTables.bootstrap.min",

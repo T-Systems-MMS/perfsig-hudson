@@ -17,15 +17,18 @@
 package de.tsystems.mms.apm.performancesignature.util;
 
 import de.tsystems.mms.apm.performancesignature.PerfSigRecorder;
-import de.tsystems.mms.apm.performancesignature.dynatrace.model.SystemProfile;
+import de.tsystems.mms.apm.performancesignature.dynatrace.model.Agent;
+import de.tsystems.mms.apm.performancesignature.dynatrace.model.BaseConfiguration;
 import de.tsystems.mms.apm.performancesignature.dynatrace.rest.CommandExecutionException;
+import de.tsystems.mms.apm.performancesignature.model.CredProfilePair;
+import de.tsystems.mms.apm.performancesignature.model.DynatraceServerConfiguration;
 import hudson.FilePath;
-import hudson.model.AbstractBuild;
+import hudson.Functions;
 import hudson.model.Hudson;
-import hudson.model.Project;
-import hudson.tasks.Builder;
-import hudson.tasks.Publisher;
+import hudson.model.Run;
+import hudson.util.Area;
 import hudson.util.ListBoxModel;
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.commons.lang.StringUtils;
@@ -40,13 +43,11 @@ import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
-/**
- * Created by rapi on 18.05.2014.
- */
 public class PerfSigUtils {
+    private PerfSigUtils() {
+    }
+
     /**
      * @return {@link hudson.model.Hudson#getInstance()} if that isn't null, or die.
      */
@@ -58,87 +59,65 @@ public class PerfSigUtils {
         return hudson;
     }
 
-    @SuppressWarnings("unchecked")
-    public static <T> T cast(final Object obj) {
-        return (T) obj;
-    }
-
-    public static BigDecimal round(final double d, int decimalPlace) {
+    public static BigDecimal round(final double d, final int decimalPlace) {
         if (d == 0) return BigDecimal.valueOf(0);
-        if (d % 1 == 0) decimalPlace = 0;
         BigDecimal bd = new BigDecimal(d);
-        bd = bd.setScale(decimalPlace, BigDecimal.ROUND_HALF_UP);
+        bd = bd.setScale(d % 1 == 0 ? 0 : decimalPlace, BigDecimal.ROUND_HALF_UP);
         return bd;
     }
 
     public static ListBoxModel listToListBoxModel(final List<?> arrayList) {
         final ListBoxModel listBoxModel = new ListBoxModel();
         for (Object item : arrayList) {
-            if (item instanceof SystemProfile)
-                listBoxModel.add(((SystemProfile) item).getId());
-            else if (item instanceof String)
+            if (item instanceof String)
                 listBoxModel.add((String) item);
+            else if (item instanceof Agent)
+                listBoxModel.add(((Agent) item).getName());
+            else if (item instanceof DynatraceServerConfiguration) {
+                DynatraceServerConfiguration conf = (DynatraceServerConfiguration) item;
+                if (CollectionUtils.isNotEmpty(conf.getCredProfilePairs()))
+                    for (CredProfilePair credProfilePair : conf.getCredProfilePairs()) {
+                        String listItem = credProfilePair.getProfile() + " (" + credProfilePair.getUsername() + ") @ " +
+                                conf.getName();
+                        listBoxModel.add(listItem);
+                    }
+            } else if (item instanceof BaseConfiguration)
+                listBoxModel.add(((BaseConfiguration) item).getId());
         }
         return listBoxModel;
     }
 
-    public static PerfSigRecorder getRecorder(final AbstractBuild build) {
-        final Project<?, ?> project = PerfSigUtils.cast(build.getProject());
-        final List<Publisher> publishers = project.getPublishersList().toList();
-        PerfSigRecorder dtRecorder = null;
-
-        //ToDo: add Flexible Publish Plugin compatibility
-        for (Publisher publisher : publishers) {
-            if (publisher instanceof PerfSigRecorder) {
-                dtRecorder = (PerfSigRecorder) publisher;
-                break;
-            }
+    public static File getReportDirectory(final Run<?, ?> run) throws IOException {
+        File reportDirectory = new File(run.getRootDir(), Messages.PerfSigUtils_ReportDirectory());
+        if (!reportDirectory.exists()) {
+            if (!reportDirectory.mkdirs()) throw new IOException("failed to create report directory");
         }
-        return dtRecorder;
+        return reportDirectory;
     }
 
-    public static <T extends Builder> T getPerfSigBuilder(final AbstractBuild build, final Class<T> c) {
-        final Project<?, ?> project = PerfSigUtils.cast(build.getProject());
-        final List<Builder> builders = project.getBuilders();
+    public static List<DynatraceServerConfiguration> getDTConfigurations() {
+        return getInstanceOrDie().getDescriptorByType(PerfSigRecorder.DescriptorImpl.class).getConfigurations();
+    }
 
-        for (Builder builder : builders) {
-            if (c.isInstance(builder)) {
-                return c.cast(builder);
+    public static DynatraceServerConfiguration getServerConfiguration(final String dynatraceServer) {
+        for (DynatraceServerConfiguration serverConfiguration : getDTConfigurations()) {
+            String strippedName = dynatraceServer.replaceAll(".*@", "").trim();
+            if (strippedName.equals(serverConfiguration.getName())) {
+                return serverConfiguration;
             }
         }
         return null;
     }
 
-    public static FilePath getReportDirectory(final AbstractBuild<?, ?> build) {
-        final FilePath filePath = new FilePath(new File(build.getRootDir(), Messages.PerfSigUtils_ReportDirectory()));
-        try {
-            if (!filePath.exists()) {
-                filePath.mkdirs();
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        return filePath;
+    public static List<FilePath> getDownloadFiles(final String testCase, final Run<?, ?> build) throws IOException, InterruptedException {
+        FilePath filePath = new FilePath(PerfSigUtils.getReportDirectory(build));
+        return filePath.list(new RegexFileFilter(testCase));
     }
 
-    public static List<FilePath> getDownloadFiles(final String testCase, final AbstractBuild<?, ?> build) {
-        try {
-            final FilePath filePath = PerfSigUtils.getReportDirectory(build);
-            return filePath.list(new RegexFileFilter(testCase));
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public static void downloadFile(final StaplerRequest request, final StaplerResponse response, final AbstractBuild<?, ?> build) throws IOException {
+    public static void downloadFile(final StaplerRequest request, final StaplerResponse response, final Run build) throws IOException {
         final String file = request.getParameter("f");
         if (file.matches("[^a-zA-Z0-9\\._-]+")) return;
-        File downloadFile = new File(PerfSigUtils.getReportDirectory(build) + File.separator + file);
+        File downloadFile = new File(PerfSigUtils.getReportDirectory(build), File.separator + file);
         FileInputStream inStream = new FileInputStream(downloadFile);
 
         // gets MIME type of the file
@@ -179,18 +158,17 @@ public class PerfSigUtils {
         }
     }
 
-    public static String extractXMLAttribute(final String xml, final String attribute) {
-        Pattern pattern = Pattern.compile(attribute + "=(.*?)[&|\"]", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
-        Matcher m = pattern.matcher(xml);
-        if (m.find())
-            return m.group(1);
-        else
-            return "";
-    }
-
     public static String getDurationString(final float seconds) {
         int minutes = (int) ((seconds % 3600) / 60);
         float rest = seconds % 60;
         return minutes + " min " + (int) rest + " s";
+    }
+
+    public static Area calcDefaultSize() {
+        Area res = Functions.getScreenResolution();
+        if (res != null && res.width <= 800)
+            return new Area(250, 100);
+        else
+            return new Area(500, 200);
     }
 }

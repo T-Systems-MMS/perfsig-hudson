@@ -18,7 +18,10 @@ package de.tsystems.mms.apm.performancesignature;
 
 import de.tsystems.mms.apm.performancesignature.dynatrace.rest.DTServerConnection;
 import de.tsystems.mms.apm.performancesignature.dynatrace.rest.RESTErrorException;
+import de.tsystems.mms.apm.performancesignature.model.CredProfilePair;
+import de.tsystems.mms.apm.performancesignature.model.DynatraceServerConfiguration;
 import de.tsystems.mms.apm.performancesignature.util.PerfSigUtils;
+import hudson.AbortException;
 import hudson.Extension;
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
@@ -26,95 +29,89 @@ import hudson.model.AbstractProject;
 import hudson.model.BuildListener;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
+import hudson.util.ListBoxModel;
+import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 
+import java.io.IOException;
 import java.io.PrintStream;
 
-/**
- * Created by rapi on 17.05.2014.
- */
 public class PerfSigStopRecording extends Builder {
     private static final int reanalyzeSessionTimeout = 60000; //==1 minute
     private static final int reanalyzeSessionPollingInterval = 5000; //==5 seconds
-    private final boolean reanalyzeSession;
+    private final String dynatraceProfile;
+    private boolean reanalyzeSession;
 
     @DataBoundConstructor
-    public PerfSigStopRecording(final boolean reanalyzeSession) {
+    public PerfSigStopRecording(final String dynatraceProfile, final boolean reanalyzeSession) {
+        this.dynatraceProfile = dynatraceProfile;
         this.reanalyzeSession = reanalyzeSession;
+    }
+
+    @Override
+    public boolean perform(final AbstractBuild<?, ?> build, final Launcher launcher, final BuildListener listener) throws InterruptedException, IOException {
+        final PrintStream logger = listener.getLogger();
+
+        logger.println(Messages.PerfSigStopRecording_StopSessionRecording());
+        DynatraceServerConfiguration serverConfiguration = PerfSigUtils.getServerConfiguration(dynatraceProfile);
+        if (serverConfiguration == null)
+            throw new AbortException("failed to lookup Dynatrace server configuration");
+
+        CredProfilePair pair = serverConfiguration.getCredProfilePair(dynatraceProfile);
+        if (pair == null)
+            throw new AbortException("failed to lookup Dynatrace server profile");
+
+        final DTServerConnection connection = new DTServerConnection(serverConfiguration, pair);
+
+        String sessionName = connection.stopRecording();
+        if (StringUtils.isBlank(sessionName))
+            throw new RESTErrorException(Messages.PerfSigStopRecording_InternalError());
+        logger.println(String.format("Stopped recording on %s with SessionName %s", pair.getProfile(), sessionName));
+
+        if (getReanalyzeSession()) {
+            logger.println("reanalyze session ...");
+            boolean reanalyzeFinished = connection.reanalyzeSessionStatus(sessionName);
+            if (connection.reanalyzeSession(sessionName)) {
+                int timeout = reanalyzeSessionTimeout;
+                while ((!reanalyzeFinished) && (timeout > 0)) {
+                    logger.println("querying session analysis status");
+                    try {
+                        Thread.sleep(reanalyzeSessionPollingInterval);
+                        timeout -= reanalyzeSessionPollingInterval;
+                    } catch (InterruptedException ignored) {
+                    }
+                    reanalyzeFinished = connection.reanalyzeSessionStatus(sessionName);
+                }
+                if (reanalyzeFinished) {
+                    logger.println("session reanalysis finished");
+                } else {
+                    throw new RESTErrorException("Timeout raised");
+                }
+            }
+        }
+        return true;
+    }
+
+    public String getDynatraceProfile() {
+        return dynatraceProfile;
     }
 
     public boolean getReanalyzeSession() {
         return reanalyzeSession;
     }
 
-    @Override
-    public boolean perform(final AbstractBuild build, final Launcher launcher, final BuildListener listener) {
-        // This is where you 'build' the project.
-        final PrintStream logger = listener.getLogger();
-
-        logger.println(Messages.PerfSigStopRecording_StopSessionRecording());
-        final PerfSigRecorder dtRecorder = PerfSigUtils.getRecorder(build);
-        if (dtRecorder == null) {
-            logger.println(Messages.PerfSigStopRecording_MissingConfiguration());
-            return false;
-        }
-
-        final DTServerConnection connection = new DTServerConnection(dtRecorder.getProtocol(), dtRecorder.getHost(), dtRecorder.getPort(),
-                dtRecorder.getUsername(), dtRecorder.getPassword(), dtRecorder.isVerifyCertificate(), dtRecorder.getCustomProxy());
-
-        try {
-            String sessionName = connection.stopRecording(dtRecorder.getProfile());
-            if (sessionName == null) throw new RESTErrorException(Messages.PerfSigStopRecording_InternalError());
-            logger.println(String.format("Stopped recording on %s with SessionName %s", dtRecorder.getProfile(), sessionName));
-
-            if (this.reanalyzeSession) {
-                logger.println("reanalyze session ...");
-                boolean reanalyzeFinished = connection.reanalyzeSessionStatus(sessionName);
-                if (connection.reanalyzeSession(sessionName)) {
-                    int timeout = reanalyzeSessionTimeout;
-                    while ((!reanalyzeFinished) && (timeout > 0)) {
-                        logger.println("querying session analysis status");
-                        try {
-                            Thread.sleep(reanalyzeSessionPollingInterval);
-                            timeout -= reanalyzeSessionPollingInterval;
-                        } catch (InterruptedException ignored) {
-                        }
-                        reanalyzeFinished = connection.reanalyzeSessionStatus(sessionName);
-                    }
-                    if (reanalyzeFinished) {
-                        logger.println("session reanalysis finished");
-                        return true;
-                    } else {
-                        throw new RESTErrorException("Timeout raised");
-                    }
-                }
-            }
-            return true;
-        } catch (RESTErrorException e) {
-            logger.println(String.format("Failed to stop Dynatrace Session recording on %s: %s", dtRecorder.getProfile(), e));
-            return !dtRecorder.isTechnicalFailure();
-        }
-    }
-
-    @Extension // This indicates to Jenkins that this is an implementation of an extension point.
+    @Extension
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
+        public static final boolean defaultReanalyzeSession = false;
 
-        public DescriptorImpl() {
-            load();
-        }
-
-        public static boolean getDefaultReanalyzeSession() {
-            return false;
+        public ListBoxModel doFillDynatraceProfileItems() {
+            return PerfSigUtils.listToListBoxModel(PerfSigUtils.getDTConfigurations());
         }
 
         public boolean isApplicable(final Class<? extends AbstractProject> aClass) {
-            // Indicates that this builder can be used with all kinds of project types
             return true;
         }
 
-        /**
-         * This human readable name is used in the configuration screen.
-         */
         public String getDisplayName() {
             return Messages.PerfSigStopRecording_DisplayName();
         }

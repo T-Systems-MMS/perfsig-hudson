@@ -21,30 +21,21 @@ import hudson.FilePath;
 import hudson.Plugin;
 import hudson.init.Initializer;
 import hudson.model.AbstractProject;
-import hudson.model.Hudson;
-import hudson.util.VersionNumber;
 import org.apache.commons.io.filefilter.RegexFileFilter;
 
 import java.io.IOException;
 
 import static hudson.init.InitMilestone.JOB_LOADED;
 
-/**
- * Created by rapi on 01.12.2015.
- */
 public class PerformanceSignaturePlugin extends Plugin {
     @Initializer(after = JOB_LOADED)
     public static void init1() throws IOException, InterruptedException {
         // Check for old dashboard configurations
-        Hudson jenkins = PerfSigUtils.getInstanceOrDie();
-        if (jenkins.getPluginManager()
-                .getPlugin("performance-signature").getVersionNumber().isOlderThan(new VersionNumber("1.6.0"))) {
-            for (AbstractProject<?, ?> job : jenkins.getAllItems(AbstractProject.class)) {
-                FilePath jobPath = new FilePath(job.getConfigFile().getFile()).getParent();
-                if (jobPath == null) continue;
-                for (FilePath file : jobPath.list(new RegexFileFilter(".*-config.json"))) {
-                    file.delete();
-                }
+        for (AbstractProject<?, ?> job : PerfSigUtils.getInstanceOrDie().getAllItems(AbstractProject.class)) {
+            FilePath jobPath = new FilePath(job.getConfigFile().getFile()).getParent();
+            if (jobPath == null) continue;
+            for (FilePath file : jobPath.list(new RegexFileFilter(".*-config.json"))) {
+                file.delete();
             }
         }
     }

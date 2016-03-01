@@ -28,9 +28,6 @@
 
 package de.tsystems.mms.apm.performancesignature.dynatrace.model;
 
-/**
- * Created by rapi on 27.10.2014.
- */
 public class Agent {
     private String agentGroup, configuration, host, licenseInformation;
     private String licenseOk, name, startupTimeUTC, systemProfile, technologyType;
@@ -184,10 +181,5 @@ public class Agent {
 
     public void setCollector(Collector collector) {
         this.collector = collector;
-    }
-
-    public String toString() {
-        return "AgentId=" + this.agentId + ";AgentGroup" + this.agentGroup + ";Name=" + this.name + ";Host=" +
-                this.host + ";ProcessId=" + this.processId + ";SystemProfile=" + this.systemProfile;
     }
 }

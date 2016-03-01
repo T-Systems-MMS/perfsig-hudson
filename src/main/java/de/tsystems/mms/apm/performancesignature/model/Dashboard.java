@@ -16,7 +16,6 @@
 
 package de.tsystems.mms.apm.performancesignature.model;
 
-import de.tsystems.mms.apm.performancesignature.PerfSigRecorder;
 import de.tsystems.mms.apm.performancesignature.dynatrace.rest.DTServerConnection;
 import de.tsystems.mms.apm.performancesignature.util.PerfSigUtils;
 import hudson.Extension;
@@ -27,13 +26,7 @@ import hudson.util.ListBoxModel;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
-import java.io.Serializable;
-
-/**
- * Created by rapi on 18.09.2014.
- */
-public class Dashboard extends AbstractDescribableImpl<Dashboard> implements Serializable {
-    private static final long serialVersionUID = 1L;
+public class Dashboard extends AbstractDescribableImpl<Dashboard> {
     private final String name;
 
     @DataBoundConstructor
@@ -51,34 +44,21 @@ public class Dashboard extends AbstractDescribableImpl<Dashboard> implements Ser
 
     @Extension
     public static class DescriptorImpl extends Descriptor<Dashboard> {
-        public DescriptorImpl() {
-            super(Dashboard.class);
-            load();
-        }
-
-        public PerfSigRecorder.DescriptorImpl getPublisherDescriptor() {
-            return PerfSigUtils.getInstanceOrDie().getDescriptorByType(PerfSigRecorder.DescriptorImpl.class);
-        }
-
         @Override
         public String getDisplayName() {
-            return "Single/Comparison Report Dashboards";
+            return "";
         }
 
-        public ListBoxModel doFillDashboardItems(@RelativePath("../..") @QueryParameter final String protocol, @RelativePath("../..") @QueryParameter final String host,
-                                                 @RelativePath("../..") @QueryParameter final int port, @RelativePath("../..") @QueryParameter final String username,
-                                                 @RelativePath("../..") @QueryParameter final String password,
-                                                 @RelativePath("../..") @QueryParameter final boolean verifyCertificate, @RelativePath("../..") @QueryParameter final boolean proxy,
-                                                 @RelativePath("../..") @QueryParameter final int proxySource,
-                                                 @RelativePath("../..") @QueryParameter final String proxyServer, @RelativePath("../..") @QueryParameter final int proxyPort,
-                                                 @RelativePath("../..") @QueryParameter final String proxyUser, @RelativePath("../..") @QueryParameter final String proxyPassword) {
-
-            CustomProxy customProxyServer = null;
-            if (proxy) {
-                customProxyServer = new CustomProxy(proxyServer, proxyPort, proxyUser, proxyPassword, proxySource == 0);
+        public ListBoxModel doFillDashboardItems(@RelativePath("../..") @QueryParameter final String dynatraceProfile) {
+            DynatraceServerConfiguration serverConfiguration = PerfSigUtils.getServerConfiguration(dynatraceProfile);
+            if (serverConfiguration != null) {
+                CredProfilePair pair = serverConfiguration.getCredProfilePair(dynatraceProfile);
+                if (pair != null) {
+                    DTServerConnection connection = new DTServerConnection(serverConfiguration, pair);
+                    return PerfSigUtils.listToListBoxModel(connection.getDashboards());
+                }
             }
-            final DTServerConnection connection = new DTServerConnection(protocol, host, port, username, password, verifyCertificate, customProxyServer);
-            return PerfSigUtils.listToListBoxModel(connection.getDashboards());
+            return null;
         }
     }
 }

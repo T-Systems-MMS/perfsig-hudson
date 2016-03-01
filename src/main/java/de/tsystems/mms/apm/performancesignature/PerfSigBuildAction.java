@@ -17,33 +17,25 @@
 package de.tsystems.mms.apm.performancesignature;
 
 import de.tsystems.mms.apm.performancesignature.dynatrace.model.DashboardReport;
-import hudson.model.AbstractBuild;
 import hudson.model.Action;
+import hudson.model.Run;
 import org.kohsuke.stapler.StaplerProxy;
 
 import java.lang.ref.WeakReference;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
-/**
- * Created by rapi on 25.04.2014.
- */
-
-public class PerfSigBuildAction implements Action, StaplerProxy {
-    private final AbstractBuild<?, ?> build;
+public class PerfSigBuildAction extends PerfSigBaseAction implements StaplerProxy {
+    private final Run<?, ?> run;
     private final List<DashboardReport> dashboardReports;
     private transient WeakReference<PerfSigBuildActionResultsDisplay> buildActionResultsDisplay;
 
-    public PerfSigBuildAction(final AbstractBuild<?, ?> build, final List<DashboardReport> dashboardReports) {
-        this.build = build;
+    public PerfSigBuildAction(final Run<?, ?> run, final List<DashboardReport> dashboardReports) {
+        this.run = run;
         this.dashboardReports = dashboardReports;
     }
 
-    @Override
-    public String toString() {
-        return "PerfSigBuildAction{ build=" + build + '}';
-    }
-
-    @SuppressWarnings("unchecked")
     public PerfSigBuildActionResultsDisplay getBuildActionResultsDisplay() {
         PerfSigBuildActionResultsDisplay buildDisplay;
         WeakReference<PerfSigBuildActionResultsDisplay> wr = this.buildActionResultsDisplay;
@@ -54,7 +46,7 @@ public class PerfSigBuildAction implements Action, StaplerProxy {
             }
         }
         buildDisplay = new PerfSigBuildActionResultsDisplay(this);
-        this.buildActionResultsDisplay = new WeakReference(buildDisplay);
+        this.buildActionResultsDisplay = new WeakReference<PerfSigBuildActionResultsDisplay>(buildDisplay);
         return buildDisplay;
     }
 
@@ -62,23 +54,20 @@ public class PerfSigBuildAction implements Action, StaplerProxy {
         return getBuildActionResultsDisplay();
     }
 
-    public String getIconFileName() {
-        return "/plugin/" + Messages.PerfSigBuildAction_UrlName() + "/images/icon.png";
+    @Override
+    protected String getTitle() {
+        return run.getDisplayName() + " PerfSig";
     }
 
-    public String getDisplayName() {
-        return Messages.PerfSigBuildAction_DisplayName();
-    }
-
-    public String getUrlName() {
-        return Messages.PerfSigBuildAction_UrlName();
-    }
-
-    public AbstractBuild<?, ?> getBuild() {
-        return this.build;
+    public Run<?, ?> getBuild() {
+        return this.run;
     }
 
     public List<DashboardReport> getDashboardReports() {
         return this.dashboardReports;
+    }
+
+    public Collection<? extends Action> getProjectActions() {
+        return Collections.singleton(new PerfSigProjectAction(run.getParent()));
     }
 }
