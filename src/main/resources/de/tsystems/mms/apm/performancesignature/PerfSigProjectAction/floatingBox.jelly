@@ -34,6 +34,7 @@
                             </li>
                         </j:forEach>
                     </ul>
+                    <br style="clear:both"/>
                     <div class="tab-content">
                         <j:forEach var="dashboardReport" items="${from.lastDashboardReports}">
                             <div role="tabpanel" class="tab-pane" id="${dashboardReport.name}">

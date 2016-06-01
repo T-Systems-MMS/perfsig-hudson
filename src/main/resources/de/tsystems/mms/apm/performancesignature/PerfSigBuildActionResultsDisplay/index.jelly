@@ -146,8 +146,12 @@
                 </div>
             </div>
             <br style="clear:both;"/>
-            <st:adjunct includes="org.jenkins.ui.jsmodules.css.bootstrapprefix"/>
-            <st:adjunct includes="org.jenkins.ui.jsmodules.performance_signature.buildactionresultsdisplay"/>
+            <script data-main="${resURL}/plugin/performance-signature/js/buildactionresultsdisplay"
+                    src="${resURL}/plugin/performance-signature/js/require.min.js"/>
+            <script type="text/javascript">
+                var rootURL = "${rootURL}";
+                var resURL = "${resURL}";
+            </script>
         </l:main-panel>
     </l:layout>
 </j:jelly>
