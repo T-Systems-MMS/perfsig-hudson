@@ -49,10 +49,6 @@ public class PerfSigTestDataPublisher extends TestDataPublisher {
         this.dynatraceProfile = dynatraceProfile;
     }
 
-    public String getDynatraceProfile() {
-        return dynatraceProfile;
-    }
-
     @Override
     public TestResultAction.Data getTestData(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener, TestResult testResult) throws IOException, InterruptedException {
         PrintStream logger = listener.getLogger();
@@ -91,6 +87,10 @@ public class PerfSigTestDataPublisher extends TestDataPublisher {
         return perfSigTestData;
     }
 
+    public String getDynatraceProfile() {
+        return dynatraceProfile;
+    }
+
     @Extension
     public static final class PerfSigTestDataPublisherDescriptor extends Descriptor<TestDataPublisher> {
 
@@ -100,7 +100,7 @@ public class PerfSigTestDataPublisher extends TestDataPublisher {
 
         @Override
         public String getDisplayName() {
-            return "Add Dynatrace Performance Data to each test result";
+            return "Add Dynatrace performance data to each test result";
         }
     }
 

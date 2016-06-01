@@ -29,22 +29,18 @@ import hudson.model.Run;
 import hudson.util.Area;
 import hudson.util.ListBoxModel;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.io.IOUtils;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.filefilter.RegexFileFilter;
 import org.apache.commons.lang.StringUtils;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
 
-import javax.servlet.ServletException;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.util.List;
 
-public class PerfSigUtils {
+public final class PerfSigUtils {
     private PerfSigUtils() {
     }
 
@@ -114,28 +110,8 @@ public class PerfSigUtils {
         return filePath.list(new RegexFileFilter(testCase));
     }
 
-    public static void downloadFile(final StaplerRequest request, final StaplerResponse response, final Run build) throws IOException {
-        final String file = request.getParameter("f");
-        if (file.matches("[^a-zA-Z0-9\\._-]+")) return;
-        File downloadFile = new File(PerfSigUtils.getReportDirectory(build), File.separator + file);
-        FileInputStream inStream = new FileInputStream(downloadFile);
-
-        // gets MIME type of the file
-        String mimeType;
-        if (file.contains("pdf")) mimeType = "application/pdf";
-        else mimeType = "application/octet-stream"; // set to binary type if MIME mapping not found
-
-        try {
-            // forces download
-            String headerKey = "Content-Disposition";
-            String headerValue = String.format("attachment; filename=\"%s\"", file);
-            response.setHeader(headerKey, headerValue);
-            response.serveFile(request, inStream, downloadFile.lastModified(), 604800000, (int) downloadFile.length(), "mime-type:" + mimeType);
-        } catch (ServletException e) {
-            e.printStackTrace();
-        } finally {
-            IOUtils.closeQuietly(inStream);
-        }
+    public static String removeExtension(final String fileName) {
+        return FilenameUtils.removeExtension(fileName);
     }
 
     /*
@@ -150,7 +126,7 @@ public class PerfSigUtils {
     }
 
     public static String encodeString(final String value) {
-        if (value == null) return null;
+        if (StringUtils.isBlank(value)) return "";
         try {
             return URLEncoder.encode(value, "UTF-8").replaceAll("\\+", "%20");
         } catch (UnsupportedEncodingException e) {

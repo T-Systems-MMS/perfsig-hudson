@@ -24,15 +24,16 @@ import java.util.List;
 public class GenericTestCase extends ConfigurationTestCase {
 
     @DataBoundConstructor
-    public GenericTestCase(final String name, final List<Dashboard> singleDashboards, final List<Dashboard> comparisonDashboards, final String xmlDashboard) {
-        super(name, singleDashboards, comparisonDashboards, xmlDashboard);
+    public GenericTestCase(final String name, final List<Dashboard> singleDashboards, final List<Dashboard> comparisonDashboards,
+                           final String xmlDashboard, final String clientDashboard) {
+        super(name, singleDashboards, comparisonDashboards, xmlDashboard, clientDashboard);
     }
 
     @Extension
     public static final class DescriptorImpl extends ConfigurationTestCaseDescriptor {
         @Override
         public String getDisplayName() {
-            return "generic TestCase";
+            return "Generic test case";
         }
     }
 }

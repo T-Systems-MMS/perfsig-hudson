@@ -83,7 +83,7 @@ public class PerfSigMemoryDump extends Builder {
                 String memoryDump = connection.memoryDump(agent.getName(), agent.getHost(), agent.getProcessId(), getType(),
                         this.lockSession, this.captureStrings, this.capturePrimitives, this.autoPostProcess, this.dogc);
                 if (StringUtils.isBlank(memoryDump))
-                    throw new RESTErrorException("Memory Dump wasnt taken");
+                    throw new RESTErrorException("memory dump wasn't taken");
                 int timeout = waitForDumpTimeout;
                 boolean dumpFinished = connection.memoryDumpStatus(memoryDump).isResultValueTrue();
                 while ((!dumpFinished) && (timeout > 0)) {
@@ -95,7 +95,7 @@ public class PerfSigMemoryDump extends Builder {
                     logger.println(String.format(Messages.PerfSigMemoryDump_SuccessfullyCreatedMemoryDump(), agent.getName()));
                     return true;
                 } else {
-                    throw new RESTErrorException("Timeout raised");
+                    throw new RESTErrorException("timeout raised");
                 }
             }
         }

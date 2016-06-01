@@ -35,11 +35,15 @@ import java.net.MalformedURLException;
 import java.net.URL;
 
 public class ManagementURLBuilder {
-    private String serverAddress = Messages.ManagementURLBuilder_DefaultServerUrl();
-    private String parameters = null;
+    private String serverAddress;
+    private String parameters;
 
     public String getPostParameters() {
         return this.parameters;
+    }
+
+    public void setServerAddress(final String serverAddress) {
+        this.serverAddress = serverAddress;
     }
 
     public URL serverVersionURL() {
@@ -81,9 +85,9 @@ public class ManagementURLBuilder {
             this.parameters = String.format("recordingOption=%1$s&isSessionLocked=%2$s&isTimeStampAllowed=%3$s&description=%4$s&presentableName=%5$s",
                     recordingOption, sessionLocked, isNoTimestamp, description == null ? "" : PerfSigUtils.encodeString(description),
                     StringUtils.isBlank(sessionName) ? PerfSigUtils.encodeString(profileName) : PerfSigUtils.encodeString(sessionName));
-            final String s = String.format("%1$s/rest/management/profiles/%2$s/startrecording", this.serverAddress,
+            final String url = String.format("%1$s/rest/management/profiles/%2$s/startrecording", this.serverAddress,
                     PerfSigUtils.encodeString(profileName));
-            return new URL(s);
+            return new URL(url);
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
@@ -154,14 +158,6 @@ public class ManagementURLBuilder {
         return null;
     }
 
-    public String getServerAddress() {
-        return this.serverAddress;
-    }
-
-    public void setServerAddress(final String serverAddress) {
-        this.serverAddress = serverAddress;
-    }
-
     public URL listSessionsURL() {
         try {
             final String s = String.format("%1$s/rest/management/sessions?type=purepath", this.serverAddress);
@@ -192,7 +188,7 @@ public class ManagementURLBuilder {
         return null;
     }
 
-    protected StringBuilder resourceDumpURL(final String agentName, final String hostName, final int processId, final boolean sessionLocked) {
+    public StringBuilder resourceDumpURL(final String agentName, final String hostName, final int processId, final boolean sessionLocked) {
         StringBuilder builder = new StringBuilder();
         builder.append(String.format("agentName=%1$s&isSessionLocked=%2$s&hostName=%3$s&processId=%4$s",
                 agentName, sessionLocked ? "true" : "false", hostName, String.valueOf(processId)));
