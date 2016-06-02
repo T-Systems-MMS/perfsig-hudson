@@ -19,6 +19,7 @@
     <l:layout xmlns:jm="/de/tsystems/mms/apm/performancesignature/tags"
               title="Performance Signature report details for build ${it.build.number}">
         <l:header>
+            <link type="text/css" href="${resURL}/plugin/performance-signature/css/bootstrap.min.css" rel="stylesheet"/>
             <style>
                 .text-center { text-align: center !important; }
             </style>
@@ -28,7 +29,7 @@
             <div class="tw-bs">
                 <div class="container-fluid" style="height: 170px;">
                     <h1>${%Performance Signature for build} ${it.build.number}</h1>
-                    <div class="row col-md-24">
+                    <div class="row col-md-12">
                         <ul class="nav nav-tabs" role="tablist" id="tabList">
                             <j:forEach var="dashboardReport" items="${it.currentDashboardReports}">
                                 <li role="presentation">
@@ -50,10 +51,10 @@
                                         <h3>${%Test case:} ${dashboardReport.name}</h3>
                                     </div>
                                     <j:set var="sessionFiles" value="${it.PerfSigUtils.getDownloadFiles('.*' + dashboardReport.name + '.dts',it.build)}"/>
-                                    <j:if test="${!sessionFiles.isEmtpy()}">
+                                    <j:if test="${sessionFiles.isEmtpy()==false}">
                                         <div class="col-md-4 pull-right">
                                             <a target="_blank" href="${dashboardReport.getClientLink().generateLink()}">
-                                                <button style="margin-top: 5px; margin-bottom: 10px;" type="button"
+                                                <button style="height: 30px; margin-top: 5px; margin-bottom: 10px;" type="button"
                                                         title="Dynatrace client must be started on local machine"
                                                         class="btn btn-success" id="editbutton">
                                                     <span class="glyphicon glyphicon-eye-open" aria-hidden="true"/>
@@ -70,7 +71,7 @@
                                 <br/>
                                 <br/>
                                 <div class="row">
-                                    <div class="col-md-9">
+                                    <div class="col-md-5">
                                         <div class="panel panel-danger">
                                             <div class="panel-heading">
                                                 <h4 class="panel-title">${%Singlereports}</h4>
@@ -81,7 +82,7 @@
                                                 <j:forEach var="pdfFile" items="${pdfFiles}">
                                                     <a href="./getSingleReport?testCase=${dashboardReport.name}&amp;number=${pdfFiles.indexOf(pdfFile)}"
                                                        target="_blank">
-                                                        <img src="${resURL}/plugin/performance-signature-dynatrace/images/pdficon_small.png"/>
+                                                        <img src="${resURL}/plugin/performance-signature/images/pdficon_small.png"/>
                                                         ${it.PerfSigUtils.removeExtension(pdfFile.name)}
                                                     </a>
                                                     <br/>
@@ -93,15 +94,15 @@
                                         </div>
                                     </div>
 
-                                    <div class="col-md-9">
+                                    <div class="col-md-5">
                                         <div class="panel panel-success">
                                             <div class="panel-heading">
                                                 <h4 class="panel-title">${%Dynatrace sessions}</h4>
                                             </div>
                                             <div class="panel-body">
-                                                <j:if test="${!sessionFiles.isEmtpy()}">
+                                                <j:if test="${sessionFiles.isEmtpy()==false}">
                                                     <a href="./getSession?testCase=${dashboardReport.name}" target="_blank">
-                                                        <img src="${resURL}/plugin/performance-signature-dynatrace/images/dtsession.png"/>
+                                                        <img src="${resURL}/plugin/performance-signature/images/dtsession.png"/>
                                                         ${it.PerfSigUtils.removeExtension(sessionFiles.get(0).name)}
                                                     </a>
                                                 </j:if>
@@ -115,7 +116,7 @@
 
                                 <j:if test="${dashboardReport.isUnitTest()}">
                                     <div class="row">
-                                        <div class="col-md-9">
+                                        <div class="col-md-5">
                                             <div class="panel panel-warning">
                                                 <div class="panel-heading">
                                                     <h4 class="panel-title">${%JUnit TestReport}</h4>
@@ -130,6 +131,7 @@
                                         </div>
                                     </div>
                                 </j:if>
+                                <br style="clear:both;"/>
                                 <j:forEach var="chartDashlet" items="${dashboardReport.chartDashlets}">
                                     <j:if test="${chartDashlet.name.contains('Percentile')}">
                                         <jm:chartDashletTablePercentile it="${chartDashlet}" build="${it.build}" dashboardReport="${dashboardReport}"

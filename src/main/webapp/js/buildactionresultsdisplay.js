@@ -17,12 +17,6 @@
 define(['./common'], function () {
     require(['jquery', 'bootstrap'], function ($) {
         $(document).ready(function () {
-            $('.panel-body').each(function () {  // for many elements
-                if (!/[\S]/.test($(this).html())) {
-                    $(this).html('no PDF reports available!');
-                }
-            });
-
             var hash = window.location.hash;
             if (!hash) $('#tabList').find('a:first').tab('show'); // Select first tab
             hash && $('ul.nav a[href="' + hash + '"]').tab('show');
