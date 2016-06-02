@@ -48,10 +48,8 @@
                             <f:textbox default="${descriptor.defaultRetryCount}"/>
                         </f:entry>
 
-                        <f:optionalBlock inline="true" name="proxy" title="${%use Proxy Server}"
-                                         checked="${instance.customProxy != null}">
-                            <f:radioBlock name="proxySource" title="${%use proxy server configured in Jenkins}"
-                                          value="0"
+                        <f:optionalBlock inline="true" name="proxy" title="${%use Proxy Server}" checked="${instance.customProxy != null}">
+                            <f:radioBlock name="proxySource" title="${%use proxy server configured in Jenkins}" value="0"
                                           checked="${instance.customProxy.useJenkinsProxy}"/>
                             <f:radioBlock name="proxySource" title="use custom Proxy Server" value="1"
                                           checked="${!instance.customProxy.useJenkinsProxy}">
@@ -70,9 +68,8 @@
                             </f:radioBlock>
                         </f:optionalBlock>
                     </f:advanced>
-                    <f:entry title="${%credentials/profiles pairs}">
-                        <f:repeatable field="credProfilePairs" header="${%credentials/profile pair}"
-                                      add="${%add credentials/profile pair}">
+                    <f:entry title="${%Credentials/profiles pairs}">
+                        <f:repeatable field="credProfilePairs" header="${%Credentials/profile pair}" add="${%Add credentials/profile pair}">
                             <table width="100%">
                                 <br/>
                                 <f:entry title="${%Dynatrace REST User}" field="username"
@@ -83,16 +80,15 @@
                                          description="${%Password corresponding to the user name for the REST interface}">
                                     <f:password/>
                                 </f:entry>
-                                <f:entry title="${%Dynatrace System Profile}" field="profile"
-                                         description="${%corresponding Dynatrace Profile}">
+                                <f:entry title="${%Dynatrace system profile}" field="profile" description="${%corresponding Dynatrace Profile}">
                                     <f:select/>
                                 </f:entry>
-                                <f:validateButton title="${%Test Connection}" progress="${%Testing...}"
+                                <f:validateButton title="${%Test connection}" progress="${%Testing...}"
                                                   method="testDynaTraceConnection"
-                                                  with="protocol,host,port,credentialsId,verifyCertificate,proxy,proxySource,proxyServer,proxyPort,proxyUser,proxyPassword"/>
+                                                  with="protocol,host,port,username,password,verifyCertificate,proxy,proxyServer,proxyPort,proxyUser,proxyPassword"/>
                                 <f:entry title="">
                                     <div align="right">
-                                        <f:repeatableDeleteButton value="${%remove credentials/profile pair}"/>
+                                        <f:repeatableDeleteButton value="${%Remove credentials/profile pair}"/>
                                     </div>
                                 </f:entry>
                             </table>
@@ -101,7 +97,7 @@
 
                     <f:entry title="">
                         <div align="right">
-                            <f:repeatableDeleteButton value="${%remove Dynatrace server}"/>
+                            <f:repeatableDeleteButton value="${%Remove Dynatrace server}"/>
                         </div>
                     </f:entry>
                 </table>

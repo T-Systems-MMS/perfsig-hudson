@@ -18,10 +18,6 @@
 <j:jelly xmlns:j="jelly:core">
     <j:if test="${from.lastDashboardReports != null}">
         <link type="text/css" href="${resURL}/plugin/${from.urlName}/css/bootstrap.min.css" rel="stylesheet"/>
-        <style type="text/css">
-            .carousel .carousel-control { visibility: hidden; }
-            .carousel:hover .carousel-control { visibility: visible; }
-        </style>
         <br/>
         <div class="tw-bs">
             <div class="pull-right">

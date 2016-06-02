@@ -33,7 +33,6 @@ public class ReportURLBuilder {
     private String serverAddress;
 
     public ReportURLBuilder() {
-        serverAddress = Messages.DashboardURLBuilder_DefaultServerURL();
         parameter = new ArrayList<String>();
     }
 
@@ -82,7 +81,7 @@ public class ReportURLBuilder {
             throw new ContentRetrievalException("failed to build URL", e);
         }
         if (logger.isLoggable(Level.INFO)) {
-            logger.info("Built URL: " + dashboardURL.toExternalForm());
+            logger.info("built URL: " + dashboardURL.toExternalForm());
         }
         return dashboardURL;
     }

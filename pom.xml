@@ -15,7 +15,8 @@
   ~ limitations under the License.
   -->
 
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://maven.apache.org/POM/4.0.0"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.eclipse.hudson.plugins</groupId>
@@ -32,7 +33,8 @@
     <url>https://github.com/hudson3-plugins/performance-signature-plugin/wiki</url>
     <scm>
         <connection>scm:git:https://github.com/hudson3-plugins/performance-signature-plugin.git</connection>
-        <developerConnection>scm:git:https://rpionke@github.com/hudson3-plugins/performance-signature-plugin.git</developerConnection>
+        <developerConnection>scm:git:https://rpionke@github.com/hudson3-plugins/performance-signature-plugin.git
+        </developerConnection>
         <url>https://github.com/hudson3-plugins/performance-signature-plugin</url>
         <tag>HEAD</tag>
     </scm>
@@ -70,7 +72,8 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-        <maven-compiler-plugin.version>3.2</maven-compiler-plugin.version>
+        <maven-compiler-plugin.version>3.5.1</maven-compiler-plugin.version>
+        <maven-release-plugin.version>2.5.3</maven-release-plugin.version>
         <findbugs.version>3.0.3</findbugs.version>
         <checkstyle.version>2.17</checkstyle.version>
         <compileSource>1.6</compileSource>
@@ -90,18 +93,18 @@
                         <target>${compileTarget}</target>
                         <showDeprecation>true</showDeprecation>
                         <showWarnings>true</showWarnings>
-						<compilerArgument>-Xlint:unchecked</compilerArgument>
+                        <compilerArgument>-Xlint:unchecked</compilerArgument>
                     </configuration>
                 </plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-release-plugin</artifactId>
-					<version>2.5.2</version>
-				</plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-release-plugin</artifactId>
+                    <version>${maven-release-plugin.version}</version>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
-			<plugin>
+            <plugin>
                 <groupId>org.eclipse.hudson.tools</groupId>
                 <artifactId>maven-hpi-plugin</artifactId>
                 <extensions>true</extensions>
@@ -129,11 +132,11 @@
                 <artifactId>maven-checkstyle-plugin</artifactId>
                 <version>${checkstyle.version}</version>
             </plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-release-plugin</artifactId>
-				<version>2.5.2</version>
-			</plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>${maven-release-plugin.version}</version>
+            </plugin>
         </plugins>
     </build>
 </project>

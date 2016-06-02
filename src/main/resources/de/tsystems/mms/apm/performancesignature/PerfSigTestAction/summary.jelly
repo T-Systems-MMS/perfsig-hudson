@@ -15,16 +15,15 @@
   -->
 
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:jm="/de/tsystems/mms/apm/performancesignature/tags">
-    <link type="text/css" href="${resURL}/plugin/performance-signature/css/bootstrap.min.css"
-          rel="stylesheet"/>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:jm="/de/tsystems/mms/apm/performancesignature/tags">
+    <st:adjunct includes="org.jenkins.ui.jsmodules.css.bootstrapprefix"/>
     <j:set var="testRun" value="${it.matchingTestRun}"/>
     <j:set var="testResult" value="${it.matchingTestResult}"/>
 
     <j:if test="${testResult!=null}">
         <tr>
             <td>
-                <h3>Performance Data</h3>
+                <h3>Performance data</h3>
                 <div class="tw-bs">
                     <jm:testRunTable it="${it}" testRun="${testRun}" testResult="${testResult}"/>
                 </div>

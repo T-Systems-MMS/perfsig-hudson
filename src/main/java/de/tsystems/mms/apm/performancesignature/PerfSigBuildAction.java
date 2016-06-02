@@ -27,8 +27,8 @@ import java.util.Collections;
 import java.util.List;
 
 public class PerfSigBuildAction extends PerfSigBaseAction implements StaplerProxy {
-    private final Run<?, ?> run;
     private final List<DashboardReport> dashboardReports;
+    private transient Run<?, ?> run;
     private transient WeakReference<PerfSigBuildActionResultsDisplay> buildActionResultsDisplay;
 
     public PerfSigBuildAction(final Run<?, ?> run, final List<DashboardReport> dashboardReports) {

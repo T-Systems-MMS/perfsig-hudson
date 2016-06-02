@@ -82,7 +82,7 @@ public class Measure {
     }
 
     public String getUnit() {
-        if (this.aggregation != null && this.aggregation.equalsIgnoreCase("Count")) return "num";
+        if (this.aggregation != null && this.aggregation.equalsIgnoreCase("count")) return "num";
         return PerfSigUtils.encodeString(this.unit);
     }
 
@@ -95,7 +95,11 @@ public class Measure {
     }
 
     public boolean isPercentile() {
-        return StringUtils.isNotBlank(this.getAggregation()) && this.getAggregation().equalsIgnoreCase("Percentiles");
+        return StringUtils.isNotBlank(this.getAggregation()) && this.getAggregation().equalsIgnoreCase("percentiles");
+    }
+
+    public double getMetricValue() {
+        return getMetricValue(this.getAggregation());
     }
 
     /**
@@ -104,25 +108,25 @@ public class Measure {
      *
      * @return metric Value
      */
-    public double getMetricValue() {
+    public double getMetricValue(final String aggregation) {
         if (this.isPercentile()) {
             List<Measurement> measurements = this.getMeasurements();
             if (measurements == null) return 0;
             Measurement measurement95th = measurements.get(95);
             if (measurement95th == null) return 0;
             return measurement95th.getAvg();
-        } else if (this.getAggregation().equalsIgnoreCase("Count"))
+        } else if (aggregation.equalsIgnoreCase("count"))
             return this.getCount();
-        else if (this.getAggregation().equalsIgnoreCase("Average") || StringUtils.isBlank(this.getAggregation()))
+        else if (aggregation.equalsIgnoreCase("average") || aggregation.equalsIgnoreCase("last"))
             return this.getAvg().doubleValue();
-        else if (this.getAggregation().equalsIgnoreCase("Sum"))
+        else if (aggregation.equalsIgnoreCase("sum"))
             return this.getSum();
-        else if (this.getAggregation().equalsIgnoreCase("Max"))
+        else if (aggregation.equalsIgnoreCase("maximum"))
             return this.getMax().doubleValue();
-        else if (this.getAggregation().equalsIgnoreCase("Min"))
+        else if (aggregation.equalsIgnoreCase("minimum"))
             return this.getMin().doubleValue();
         else
-            return 0;
+            return this.getAvg().doubleValue();
     }
 
     public BigDecimal getStrMetricValue() {

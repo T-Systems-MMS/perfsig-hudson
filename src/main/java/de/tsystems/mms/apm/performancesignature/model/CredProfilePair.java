@@ -27,6 +27,7 @@ import hudson.model.Descriptor;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import hudson.util.Scrambler;
+import org.apache.commons.lang.StringUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 
@@ -62,13 +63,12 @@ public class CredProfilePair extends AbstractDescribableImpl<CredProfilePair> {
         public ListBoxModel doFillProfileItems(@RelativePath("..") @QueryParameter final String protocol, @RelativePath("..") @QueryParameter final String host,
                                                @RelativePath("..") @QueryParameter final int port, @QueryParameter final String username, @QueryParameter final String password,
                                                @RelativePath("..") @QueryParameter final boolean verifyCertificate, @RelativePath("..") @QueryParameter final boolean proxy,
-                                               @RelativePath("..") @QueryParameter final int proxySource,
                                                @RelativePath("..") @QueryParameter final String proxyServer, @RelativePath("..") @QueryParameter final int proxyPort,
                                                @RelativePath("..") @QueryParameter final String proxyUser, @RelativePath("..") @QueryParameter final String proxyPassword) {
 
             CustomProxy customProxyServer = null;
             if (proxy) {
-                customProxyServer = new CustomProxy(proxyServer, proxyPort, proxyUser, proxyPassword, proxySource == 0);
+                customProxyServer = new CustomProxy(proxyServer, proxyPort, proxyUser, proxyPassword, StringUtils.isBlank(proxyServer));
             }
             try {
                 CredProfilePair pair = new CredProfilePair("", username, password);
@@ -82,13 +82,12 @@ public class CredProfilePair extends AbstractDescribableImpl<CredProfilePair> {
         public FormValidation doTestDynaTraceConnection(@QueryParameter final String protocol, @QueryParameter final String host,
                                                         @QueryParameter final int port, @QueryParameter final String username, @QueryParameter final String password,
                                                         @QueryParameter final boolean verifyCertificate, @QueryParameter final boolean proxy,
-                                                        @QueryParameter final int proxySource,
                                                         @QueryParameter final String proxyServer, @QueryParameter final int proxyPort,
                                                         @QueryParameter final String proxyUser, @QueryParameter final String proxyPassword) {
 
             CustomProxy customProxyServer = null;
             if (proxy) {
-                customProxyServer = new CustomProxy(proxyServer, proxyPort, proxyUser, proxyPassword, proxySource == 0);
+                customProxyServer = new CustomProxy(proxyServer, proxyPort, proxyUser, proxyPassword, StringUtils.isBlank(proxyServer));
             }
             CredProfilePair pair = new CredProfilePair("", username, password);
             final DTServerConnection connection = new DTServerConnection(protocol, host, port, pair, verifyCertificate, customProxyServer);

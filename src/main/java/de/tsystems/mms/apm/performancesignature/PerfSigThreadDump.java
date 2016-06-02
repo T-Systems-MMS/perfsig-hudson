@@ -71,11 +71,11 @@ public class PerfSigThreadDump extends Builder {
 
         for (Agent agent : agents) {
             if (agent.getName().equals(this.agent) && agent.getSystemProfile().equals(pair.getProfile()) && agent.getHost().equals(this.host)) {
-                logger.println("Creating Memory Dump for " + agent.getSystemProfile() + "-" + agent.getName() + "-" + agent.getHost() + "-" + agent.getProcessId());
+                logger.println("creating thread dump for " + agent.getSystemProfile() + "-" + agent.getName() + "-" + agent.getHost() + "-" + agent.getProcessId());
 
                 String threadDump = connection.threadDump(agent.getName(), agent.getHost(), agent.getProcessId(), getLockSession());
                 if (StringUtils.isBlank(threadDump))
-                    throw new RESTErrorException("Thread Dump wasnt taken");
+                    throw new RESTErrorException("thread dump wasn't taken");
                 int timeout = waitForDumpTimeout;
                 boolean dumpFinished = connection.threadDumpStatus(threadDump).isResultValueTrue();
                 while ((!dumpFinished) && (timeout > 0)) {
@@ -87,7 +87,7 @@ public class PerfSigThreadDump extends Builder {
                     logger.println(Messages.PerfSigThreadDump_SuccessfullyCreatedThreadDump() + agent.getName());
                     return true;
                 } else {
-                    throw new RESTErrorException("Timeout is raised");
+                    throw new RESTErrorException("timeout is raised");
                 }
             }
         }
